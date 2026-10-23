@@ -43,11 +43,11 @@
   .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: linear-gradient(180deg, #bfe3c0 0%, #8fc68f 55%, #5f9a62 100%); z-index: 10; text-align: center; padding: 20px; overflow: hidden; }
   .screen > * { position: relative; z-index: 2; }
-  /* Shared scenic background for the menu, map select, deck and end screens. */
-  #menu, #maps, #deck, #end { background: #4b301d; isolation: isolate; }
+  /* Shared scenic background for all front-end screens. */
+  #menu, #maps, #inventory, #shopScreen, #end { background: #4b301d; isolation: isolate; }
   #menu .menu-bg { position: absolute !important; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0 !important; pointer-events: none; }
-  #maps::before, #deck::before, #end::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: url('images/textures/mainmenu.png') center / cover no-repeat; }
-  #menu::after, #maps::after, #deck::after, #end::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.48)); }
+  #maps::before, #inventory::before, #shopScreen::before, #end::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: url('images/textures/mainmenu.png') center / cover no-repeat; }
+  #menu::after, #maps::after, #inventory::after, #shopScreen::after, #end::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.48)); }
   #menu .cloud { position: absolute !important; display: block; width: 240px; height: auto; image-rendering: auto; object-fit: contain; filter: none !important; -webkit-filter: none !important; z-index: 2 !important; pointer-events: none; opacity: .95; animation: cloudDrift 34s linear infinite; backface-visibility: visible; }
   #menu .cloud.c1 { top: 8%; left: -280px; animation-delay: -7s; }
   #menu .cloud.c2 { top: 27%; left: -340px; width: 180px; opacity: .8; animation-duration: 46s; animation-delay: -25s; }
@@ -55,7 +55,11 @@
   #menu .tree { z-index: 2 !important; }
   #menu #leafCv { z-index: 3 !important; }
   #menu h1, #menu .gemrow, #menu .rbtn { z-index: 4; }
-  #maps > *, #deck > *, #end > * { z-index: 2; }
+  #maps > *, #inventory > *, #shopScreen > *, #end > * { z-index: 2; }
+  #inventoryCards, #shopCards { width:100%; max-height:400px; overflow-y:auto; gap:10px; align-content:center; padding:8px; }
+  #inventoryCards .card, #shopCards .card { width:250px; margin:6px; }
+  .card .tower-desc { font-size:9px; line-height:2; color:#ffe2b7; margin:5px 0; }
+  .shop-price { display:block; margin:7px 0; color:#ffd95a; font-size:10px; line-height:2; }
   .tree { position: absolute !important; bottom: 0; width: 280px; height: 600px; object-fit: contain; object-position: left bottom; z-index: 1 !important; transform-origin: 50% 100%; pointer-events: none; }
   .tree.left { left: -20px; animation: swayL 8s ease-in-out infinite; }
   .tree.right { right: -20px; animation: swayR 8s ease-in-out infinite; }
@@ -146,7 +150,8 @@
     <h1>PEACE<br>IS SOLD</h1>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
     <button class="rbtn" id="btnPlay">PLAY</button>
-    <button class="rbtn" id="btnDeck" style="font-size:16px">DECK</button>
+    <button class="rbtn" id="btnInventory" style="font-size:16px">INVENTORY</button>
+    <button class="rbtn" id="btnShopMenu" style="font-size:16px">SHOP</button>
   </div>
 
   <!-- MAP SELECT -->
@@ -161,12 +166,20 @@
     <button class="rbtn small" id="btnMapBack">BACK</button>
   </div>
 
-  <!-- DECK -->
-  <div class="screen hidden" id="deck">
-    <h2>DECK</h2>
+  <!-- INVENTORY -->
+  <div class="screen hidden" id="inventory">
+    <h2>INVENTORY</h2>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
-    <div class="row" id="deckCards"></div>
-    <button class="rbtn small" id="btnDeckBack">BACK</button>
+    <div class="row" id="inventoryCards"></div>
+    <button class="rbtn small" id="btnInventoryBack">BACK</button>
+  </div>
+
+  <!-- TOWER SHOP -->
+  <div class="screen hidden" id="shopScreen">
+    <h2>TOWER SHOP</h2>
+    <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
+    <div class="row" id="shopCards"></div>
+    <button class="rbtn small" id="btnShopBack">BACK</button>
   </div>
 
   <!-- END SCREEN -->
@@ -194,7 +207,9 @@ const IMG = {
   deli:       'images/projectiles/deli.png',
   delice:     'images/towers/delici.png',
   dolten:     'images/towers/dolten.png', // DOLTEN uses its original, untinted sprite
-  efe:        'images/towers/efe.png'
+  efe:        'images/towers/efe.png',
+  amp:        'images/towers/amp.png',
+  guitar:     'images/projectiles/guitar.png'
 };
 
 // Main-menu music. It is intentionally NOT started on page load: the
@@ -221,6 +236,25 @@ function stopMenuMusic() {
 }
 menuMusic.addEventListener('error', () => console.error('Music failed to load. Check that audios/mainmenu.mp3 exists next to the HTML file.', menuMusic.error));
 
+// DOGODA's supporter track plays while at least one DOGODA tower is on the field.
+const dogodaMusic = new Audio('audios/dogoda.mp3');
+dogodaMusic.loop = true;
+dogodaMusic.preload = 'auto';
+dogodaMusic.volume = 0.42;
+function startDogodaMusic() {
+  if (!running || !Array.isArray(towers) || !towers.some(t => t.type && t.type.id === 'dogoda')) return;
+  dogodaMusic.volume = 0.42;
+  if (dogodaMusic.paused) {
+    const attempt = dogodaMusic.play();
+    if (attempt && attempt.catch) attempt.catch(err => console.warn('DOGODA music could not start; check audios/dogoda.mp3 and browser audio permissions.', err));
+  }
+}
+function stopDogodaMusic() {
+  dogodaMusic.pause();
+  try { dogodaMusic.currentTime = 0; } catch (e) {}
+}
+dogodaMusic.addEventListener('error', () => console.error('DOGODA track failed to load. Check audios/dogoda.mp3.', dogodaMusic.error));
+
 // Wait for the menu background/cloud and audio to load, then reveal NEXT.
 // Audio errors do not trap the player on the loading screen.
 const loadingAssets = [
@@ -228,7 +262,8 @@ const loadingAssets = [
   'images/textures/grass.png', 'images/textures/dirt.png', 'images/textures/gems.png',
   'images/textures/leaves.png', 'images/enemies/greenistan.png', 'images/enemies/redistan.png',
   'images/weapons/atardeli.png', 'images/weapons/knife.png', 'images/projectiles/deli.png',
-  'images/towers/delici.png', 'images/towers/dolten.png', 'images/towers/efe.png'
+  'images/towers/delici.png', 'images/towers/dolten.png', 'images/towers/efe.png',
+  'images/towers/amp.png', 'images/projectiles/guitar.png'
 ];
 const loadingScreen = document.getElementById('loadingScreen');
 const loadingStatus = document.getElementById('loadingStatus');
@@ -236,7 +271,7 @@ const loadingFill = document.getElementById('loadingFill');
 const nextButton = document.getElementById('nextButton');
 let loadingDone = false;
 let loadedCount = 0;
-const totalToLoad = loadingAssets.length + 1;
+const totalToLoad = loadingAssets.length + 2;
 function updateLoading() {
   const pct = Math.min(100, Math.round(loadedCount / totalToLoad * 100));
   loadingStatus.textContent = loadingDone ? 'READY!' : 'LOADING... ' + pct + '%';
@@ -250,7 +285,8 @@ function updateLoading() {
 }
 loadingAssets.forEach(src => {
   const img = new Image();
-  const finish = () => { loadedCount++; updateLoading(); };
+  let finished = false;
+  const finish = () => { if (finished) return; finished = true; loadedCount++; updateLoading(); };
   img.onload = finish;
   img.onerror = finish;
   img.src = src;
@@ -266,8 +302,19 @@ const finishAudioLoad = () => {
 menuMusic.addEventListener('canplaythrough', finishAudioLoad, { once: true });
 menuMusic.addEventListener('error', finishAudioLoad, { once: true });
 menuMusic.load();
-// Don't let a missing/slow MP3 prevent the NEXT button from appearing.
+let dogodaAudioLoadFinished = false;
+const finishDogodaAudioLoad = () => {
+  if (dogodaAudioLoadFinished) return;
+  dogodaAudioLoadFinished = true;
+  loadedCount++;
+  updateLoading();
+};
+dogodaMusic.addEventListener('canplaythrough', finishDogodaAudioLoad, { once: true });
+dogodaMusic.addEventListener('error', finishDogodaAudioLoad, { once: true });
+dogodaMusic.load();
+// Don't let a missing/slow MP3 prevent NEXT from appearing.
 setTimeout(finishAudioLoad, 5000);
+setTimeout(finishDogodaAudioLoad, 5000);
 nextButton.addEventListener('click', () => {
   loadingScreen.style.display = 'none';
   startMenuMusic(); // click is the browser-approved audio gesture
@@ -276,14 +323,21 @@ nextButton.addEventListener('click', () => {
 const TILE = 64, COLS = 15, ROWS = 9;
 const START_MONEY = 120, MAX_WAVE = 10;
 
-/* Towers. placeable:false = only via upgrade. gemCost = must be bought in DECK first. */
+/* Tower shop: gemCost unlocks a tower permanently; cost is the in-game gold placement price. */
 const TOWER_TYPES = [
   { id: 'delici', name: 'DELICI', cost: 50, range: 170, cooldown: 0.65, damage: 2, bulletSpeed: 520, bulletSize: 12,
-    size: 56, weaponLen: 44, body: 'delice', weapon: 'atardeli', bullet: 'deli', hue: 0, upgrade: 'dolten', upCost: 90, placeable: true },
-  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 210, cooldown: 0.45, damage: 4.5, bulletSpeed: 600, bulletSize: 14,
-    size: 62, weaponLen: 48, body: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false },
+    size: 56, weaponLen: 44, body: 'delice', weapon: 'atardeli', bullet: 'deli', hue: 0, upgrade: 'dolten', upCost: 90, placeable: true,
+    description: 'Balanced starter tower.' },
+  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 225, cooldown: 0.40, damage: 6, bulletSpeed: 640, bulletSize: 16,
+    size: 82, weaponLen: 58, body: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false,
+    description: 'Large upgrade of DELICI.' },
   { id: 'efe', name: 'EFE', cost: 70, range: 80, cooldown: 0.4, damage: 3.5, melee: true,
-    size: 58, weaponLen: 34, body: 'efe', fb: 'delice', fbHue: 90, weapon: 'knife', hue: 0, placeable: true, gemCost: 40 }
+    size: 58, weaponLen: 34, body: 'efe', fb: 'delice', fbHue: 90, weapon: 'knife', hue: 0, placeable: true, gemCost: 40,
+    description: 'Close-range melee tower.' },
+  { id: 'dogoda', name: 'DOGODA', cost: 900, range: 230, cooldown: 1.05, damage: 6, bulletSpeed: 430, bulletSize: 30,
+    size: 66, weaponLen: 0, body: 'amp', weapon: null, bullet: 'guitar', hue: 0, placeable: true, gemCost: 500,
+    support: true, supportRange: 205, attackBoost: 1.35,
+    description: 'Supporter amp: plays music and boosts nearby tower attack speed and damage by 35%.' }
 ];
 
 /* Enemies: dmg = % of base health taken when they reach the base */
@@ -294,14 +348,14 @@ const ENEMY = {
 
 let pathTiles = new Set(), pathPts = [];
 
-/* ================== SAVE (gems + deck) ================== */
+/* ================== SAVE (gems + inventory) ================== */
 let gems = 0, owned = { delici: true };
 try {
   gems = parseInt(localStorage.getItem('ps_gems'), 10) || 0;
-  owned = Object.assign({ delici: true }, JSON.parse(localStorage.getItem('ps_deck') || '{}'));
+  owned = Object.assign({ delici: true }, JSON.parse(localStorage.getItem('ps_inventory') || localStorage.getItem('ps_deck') || '{}'));
 } catch (e) {}
 function save() {
-  try { localStorage.setItem('ps_gems', gems); localStorage.setItem('ps_deck', JSON.stringify(owned)); } catch (e) {}
+  try { localStorage.setItem('ps_gems', gems); localStorage.setItem('ps_inventory', JSON.stringify(owned)); localStorage.setItem('ps_deck', JSON.stringify(owned)); } catch (e) {}
   document.querySelectorAll('.gemcount').forEach(el => el.textContent = gems);
 }
 
@@ -317,14 +371,14 @@ function setGemIcons() {
 }
 Object.keys(IMG).forEach(k => {
   const im = new Image();
-  im.onload = () => { images[k] = im; refreshShop(); setGemIcons(); buildDeck(); };
+  im.onload = () => { images[k] = im; refreshShop(); setGemIcons(); buildInventory(); buildTowerShop(); };
   im.onerror = () => { images[k] = null; console.warn('Image not found:', IMG[k]); };
   im.src = IMG[k];
 });
 // DOLTEN must always use its own dolten.png sprite, with no recoloring or
 // fallback to the DELICI sprite while dolten.png is loading/missing.
-const bodyOf = T => T.id === 'dolten' ? 'dolten' : (images[T.body] ? T.body : (T.fb || T.body));
-const hueOf = T => T.id === 'dolten' ? 0 : (images[T.body] ? T.hue : (T.fbHue || T.hue));
+const bodyOf = T => (T.id === 'dolten' || T.id === 'dogoda') ? T.body : (images[T.body] ? T.body : (T.fb || T.body));
+const hueOf = T => (T.id === 'dolten' || T.id === 'dogoda') ? 0 : (images[T.body] ? T.hue : (T.fbHue || T.hue));
 
 /* ================== STATE ================== */
 const cv = document.getElementById('game');
@@ -400,7 +454,7 @@ function genPath() {
   pathPts[pathPts.length - 1].x = COLS * TILE + TILE / 2;
 }
 
-/* ================== SHOP ================== */
+/* ================== IN-GAME SHOP + MENU INVENTORY ================== */
 const typeOf = id => TOWER_TYPES.find(t => t.id === id);
 const shopList = () => TOWER_TYPES.filter(t => t.placeable && owned[t.id]);
 
@@ -411,6 +465,7 @@ function buildShop() {
     const b = document.createElement('button');
     b.className = 'tbtn';
     b.dataset.id = t.id;
+    b.title = t.name + ' — ' + t.cost + ' gold';
     b.innerHTML = '<span class="ico"></span><span>' + t.cost + '</span>';
     b.onclick = () => selectTower(selected === t.id ? null : t.id);
     shop.appendChild(b);
@@ -444,8 +499,8 @@ function refreshInfo() {
   const T = selTower.type;
   p.classList.remove('hidden');
   $('iName').textContent = T.name;
-  $('iDmg').textContent = 'DAMAGE: ' + T.damage;
-  $('iRng').textContent = 'RANGE: ' + T.range;
+  $('iDmg').textContent = T.support ? 'DAMAGE: ' + T.damage + ' · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK' : 'DAMAGE: ' + T.damage;
+  $('iRng').textContent = T.support ? 'ATTACK RANGE: ' + T.range + ' · BUFF RANGE: ' + T.supportRange : 'RANGE: ' + T.range;
   const up = $('btnUp');
   if (T.upgrade) {
     const U = typeOf(T.upgrade);
@@ -467,35 +522,63 @@ $('btnUp').onclick = () => {
 };
 $('btnClose').onclick = () => { selTower = null; refreshInfo(); };
 
-/* ================== DECK ================== */
-function buildDeck() {
-  const box = $('deckCards');
+/* ================== INVENTORY + GEM SHOP ================== */
+function towerCard(t, statusText, buttonLabel, onBuy, disabled=false) {
+  const c = document.createElement('div');
+  c.className = 'card';
+  c.style.cursor = 'default';
+  const k = bodyOf(t), h = hueOf(t);
+  const iconStyle = (images[k] ? 'background-image:url(' + IMG[k] + ');' : 'background-color:#9b59b6;') + (h ? 'filter:hue-rotate(' + h + 'deg);' : '');
+  c.innerHTML = '<div class="ico" style="width:76px;height:76px;background-size:contain;background-repeat:no-repeat;background-position:center;margin:0 auto 8px;' + iconStyle + '"></div>' +
+    '<strong>' + t.name + '</strong><div class="tower-desc">' + (t.description || '') + '</div>' +
+    '<span class="shop-price">BUILD: ' + t.cost + ' GOLD' + (t.gemCost !== undefined ? ' · UNLOCK: ' + t.gemCost + ' GEMS' : '') + '</span>' +
+    '<span style="color:#b8ef9a">' + statusText + '</span>';
+  if (buttonLabel) {
+    const b = document.createElement('button');
+    b.className = 'hbtn';
+    b.style.margin = '10px 0 0';
+    b.textContent = buttonLabel;
+    b.disabled = disabled;
+    b.onclick = onBuy;
+    c.appendChild(b);
+  }
+  return c;
+}
+
+function buildInventory() {
+  const box = $('inventoryCards');
+  if (!box) return;
   box.innerHTML = '';
-  TOWER_TYPES.filter(t => t.placeable).forEach(t => {
-    const c = document.createElement('div');
-    c.className = 'card';
-    c.style.cursor = 'default';
-    const k = bodyOf(t), h = hueOf(t);
-    const has = !!owned[t.id];
-    c.innerHTML = '<div class="ico" style="' + (images[k] ? 'background-image:url(' + IMG[k] + ');' : 'background-color:#9b59b6;') +
-      (h ? 'filter:hue-rotate(' + h + 'deg);' : '') + '"></div>' + t.name + '<br>' +
-      (has ? '<span style="color:#0f0">OWNED</span>' : '');
-    if (!has) {
-      const b = document.createElement('button');
-      b.className = 'hbtn';
-      b.style.margin = '0';
-      b.innerHTML = 'BUY ' + t.gemCost + ' <span class="gemico gi" style="width:14px;height:14px;vertical-align:middle"></span>';
-      b.disabled = gems < t.gemCost;
-      b.onclick = () => { if (gems >= t.gemCost) { gems -= t.gemCost; owned[t.id] = true; save(); buildDeck(); buildShop(); } };
-      c.appendChild(b);
-    }
-    box.appendChild(c);
+  TOWER_TYPES.filter(t => t.placeable && owned[t.id]).forEach(t => {
+    box.appendChild(towerCard(t, 'OWNED', '', null));
   });
+  if (!box.children.length) box.textContent = 'No towers unlocked yet.';
+  setGemIcons();
+}
+
+function buildTowerShop() {
+  const box = $('shopCards');
+  if (!box) return;
+  box.innerHTML = '';
+  const available = TOWER_TYPES.filter(t => t.placeable && !owned[t.id] && Number.isFinite(t.gemCost));
+  available.forEach(t => {
+    box.appendChild(towerCard(t, 'PERMANENT UNLOCK', 'BUY FOR ' + t.gemCost + ' GEMS', () => {
+      if (gems < t.gemCost) return;
+      gems -= t.gemCost;
+      owned[t.id] = true;
+      save();
+      buildInventory();
+      buildTowerShop();
+      buildShop();
+    }, gems < t.gemCost));
+  });
+  if (!box.children.length) box.textContent = 'Everything is unlocked!';
   setGemIcons();
 }
 
 /* ================== GAME ================== */
 function reset() {
+  stopDogodaMusic();
   genPath();
   enemies = []; towers = []; bullets = [];
   money = START_MONEY; baseHp = 100; wave = 0;
@@ -659,7 +742,8 @@ cv.addEventListener('click', e => {
   if (existing) return flash('There is already a tower here!');
   if (money < type.cost) return flash('Not enough gold!');
   money -= type.cost;
-  towers.push({ type, tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, cd: 0, aim: 0, punch: 0 });
+  towers.push({ type, tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, cd: 0, aim: 0, punch: 0, buffed: false });
+  if (type.id === 'dogoda') startDogodaMusic();
   hud();
 });
 addEventListener('keydown', e => {
@@ -671,11 +755,14 @@ addEventListener('keydown', e => {
   if (e.key === ' ') { e.preventDefault(); skipWave(); }
 });
 
-const show = id => { ['menu', 'maps', 'deck', 'end'].forEach(s => $(s).classList.toggle('hidden', s !== id)); };
+const SCREEN_IDS = ['menu', 'maps', 'inventory', 'shopScreen', 'end'];
+const show = id => { SCREEN_IDS.forEach(s => $(s).classList.toggle('hidden', s !== id)); };
 $('btnPlay').onclick = () => { startMenuMusic(); show('maps'); };
 $('btnMapBack').onclick = () => { show('menu'); startMenuMusic(); };
-$('btnDeck').onclick = () => { startMenuMusic(); buildDeck(); show('deck'); };
-$('btnDeckBack').onclick = () => { show('menu'); startMenuMusic(); };
+$('btnInventory').onclick = () => { startMenuMusic(); buildInventory(); show('inventory'); };
+$('btnInventoryBack').onclick = () => { show('menu'); startMenuMusic(); };
+$('btnShopMenu').onclick = () => { startMenuMusic(); buildTowerShop(); show('shopScreen'); };
+$('btnShopBack').onclick = () => { show('menu'); startMenuMusic(); };
 $('mapGrass').onclick = startGame;
 $('btnAgain').onclick = startGame;
 $('btnToMenu').onclick = toMenu;
@@ -684,12 +771,14 @@ $('btnSkipWave').onclick = skipWave;
 
 function startGame() {
   stopMenuMusic();
-  ['menu', 'maps', 'deck', 'end'].forEach(s => $(s).classList.add('hidden'));
+  stopDogodaMusic();
+  SCREEN_IDS.forEach(s => $(s).classList.add('hidden'));
   running = true; reset();
   startWave();
 }
 function toMenu() {
   running = false;
+  stopDogodaMusic();
   waveCountdownRemaining = 0;
   waveCountdownLastNumber = 0;
   setWaveCountdown('');
@@ -700,6 +789,7 @@ function toMenu() {
 }
 function endGame(win) {
   running = false;
+  stopDogodaMusic();
   waveCountdownRemaining = 0;
   waveCountdownLastNumber = 0;
   setWaveCountdown('');
@@ -745,6 +835,13 @@ function update(dt) {
   for (const e of enemies) if (e.escaped) { baseHp -= e.dmg; bump(); hud(); }
   enemies = enemies.filter(e => !e.escaped);
 
+  // DOGODA boosts attack speed and projectile/melee damage of ordinary towers in its aura.
+  for (const t of towers) {
+    const aura = !t.type.support ? towers.find(s => s.type.support && Math.hypot(s.x - t.x, s.y - t.y) <= s.type.supportRange) : null;
+    t.buffMultiplier = aura ? aura.type.attackBoost : 1;
+    t.buffed = !!aura;
+  }
+
   for (const t of towers) {
     const T = t.type;
     t.cd -= dt;
@@ -761,11 +858,11 @@ function update(dt) {
       d = Math.atan2(Math.sin(d), Math.cos(d));
       t.aim += d * Math.min(1, dt * 14);
       if (t.cd <= 0) {
-        t.cd = T.cooldown;
+        t.cd = T.cooldown / (t.buffMultiplier || 1);
         t.punch = 1;
-        if (T.melee) best.hp -= T.damage;
-        else bullets.push({ x: t.x + Math.cos(t.aim) * T.weaponLen, y: t.y + Math.sin(t.aim) * T.weaponLen,
-          target: best, angle: t.aim, type: T });
+        if (T.melee) best.hp -= T.damage * (t.buffMultiplier || 1);
+        else bullets.push({ x: t.x + Math.cos(t.aim) * (T.weaponLen || 0), y: t.y + Math.sin(t.aim) * (T.weaponLen || 0),
+          target: best, angle: t.aim, type: T, damage: T.damage * (t.buffMultiplier || 1) });
       }
     }
   }
@@ -775,7 +872,7 @@ function update(dt) {
     const dx = b.target.x - b.x, dy = b.target.y - b.y, dist = Math.hypot(dx, dy);
     const step = b.type.bulletSpeed * dt;
     b.angle = Math.atan2(dy, dx);
-    if (dist <= step + b.target.size / 3) { b.target.hp -= b.type.damage; b.dead = true; }
+    if (dist <= step + b.target.size / 3) { b.target.hp -= (typeof b.damage === 'number' ? b.damage : b.type.damage); b.dead = true; }
     else { b.x += dx / dist * step; b.y += dy / dist * step; }
   }
   bullets = bullets.filter(b => !b.dead);
@@ -850,6 +947,14 @@ function render() {
 
   for (const t of towers) {
     const T = t.type, s = T.size;
+    if (T.support) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,210,88,.42)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 7]);
+      ctx.beginPath(); ctx.arc(t.x, t.y, T.supportRange, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
     const bop = Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.05;
     const sq = bop + t.punch * 0.12;
     ctx.save();
@@ -864,10 +969,16 @@ function render() {
     ctx.rotate(t.aim);
     ctx.translate(T.melee ? t.punch * 16 : -t.punch * 6, 0);
     if (T.melee) ctx.rotate(-t.punch * 0.9);
-    const w = T.weaponLen + 8, h = 28;
-    if (images[T.weapon]) ctx.drawImage(images[T.weapon], 0, -h / 2, w, h);
-    else { ctx.fillStyle = '#ccc'; ctx.fillRect(0, -4, w, 8); }
+    const w = (T.weaponLen || 0) + 8, h = 28;
+    if (T.weapon && images[T.weapon]) ctx.drawImage(images[T.weapon], 0, -h / 2, w, h);
+    else if (!T.support) { ctx.fillStyle = '#ccc'; ctx.fillRect(0, -4, w, 8); }
     ctx.restore();
+    if (t.buffed) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,232,104,.9)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(t.x, t.y, s * .58, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
   }
 
   let hovered = null, hd = 1e9;
@@ -907,10 +1018,12 @@ function render() {
   for (const b of bullets) {
     const s = b.type.bulletSize;
     ctx.save();
-    setHue(b.type.hue);
+    // DOGODA's guitar is a recognisable, untinted sprite projectile.
+    if (b.type.id === 'dogoda') ctx.filter = 'none';
+    else setHue(b.type.hue);
     ctx.translate(b.x, b.y);
     ctx.rotate(b.angle);
-    drawImg(b.type.bullet, -s / 2, -s / 2, s, s, '#ff0');
+    drawImg(b.type.bullet, -s / 2, -s / 2, s, s, b.type.id === 'dogoda' ? '#f7c94b' : '#ff0');
     ctx.restore();
   }
   ctx.filter = 'none';
