@@ -39,13 +39,14 @@
   .tbtn .ico.dogoda-mini { position:relative; background:none !important; filter:none !important; }
   .dogoda-mini img { position:absolute; object-fit:contain; image-rendering:pixelated; filter:none !important; -webkit-filter:none !important; }
   .dogoda-mini .mini-body { width:27px; height:27px; left:5px; top:0; z-index:1; }
-  .dogoda-mini .mini-amp { width:16px; height:15px; left:0; bottom:0; z-index:2; }
-  .dogoda-mini .mini-guitar { width:18px; height:11px; right:0; bottom:1px; z-index:3; }
+  .dogoda-mini .mini-amp { width:22px; height:21px; left:-7px; bottom:-2px; z-index:2; }
+  /* Guitar is held across DOGODA's body, not a tiny prop floating beside it. */
+  .dogoda-mini .mini-guitar { width:27px; height:17px; left:13px; top:7px; right:auto; bottom:auto; z-index:3; transform:rotate(-28deg); transform-origin:center; }
   .dogoda-shop-preview { position:relative; background:none !important; filter:none !important; }
   .dogoda-shop-preview img { position:absolute; object-fit:contain; image-rendering:pixelated; filter:none !important; -webkit-filter:none !important; }
   .dogoda-shop-preview .preview-body { width:65px; height:65px; left:8px; top:0; z-index:1; }
-  .dogoda-shop-preview .preview-amp { width:34px; height:31px; left:0; bottom:0; z-index:2; }
-  .dogoda-shop-preview .preview-guitar { width:39px; height:23px; right:0; bottom:0; z-index:3; }
+  .dogoda-shop-preview .preview-amp { width:44px; height:41px; left:-9px; bottom:-4px; z-index:2; }
+  .dogoda-shop-preview .preview-guitar { width:60px; height:38px; left:22px; top:18px; right:auto; bottom:auto; z-index:3; transform:rotate(-28deg); transform-origin:center; }
 
   #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(61,40,25,.94); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
   #info .hbtn { margin: 6px 6px 0 0; font-size: 9px; padding: 8px; }
@@ -270,6 +271,7 @@ function stopDogodaMusic() {
   dogodaBeatPulse = 0;
   dogodaLastBass = 0;
   dogodaBassAverage = 0;
+  dogodaVolumeLevel = 0;
   dogodaLastAudioBeatTime = -10;
   dogodaLastMetronomeIndex = -1;
   musicParticles = [];
@@ -284,6 +286,7 @@ let dogodaFrequencyData = null;
 let dogodaLastBass = 0, dogodaBassAverage = 0, dogodaLastBeatAt = 0;
 let dogodaLastAudioBeatTime = -10, dogodaLastMetronomeIndex = -1;
 let dogodaBeatPulse = 0, dogodaBeatSerial = 0;
+let dogodaVolumeLevel = 0; // smoothed live music energy (0..1), used to shake/stretch the amp
 let musicParticles = [];
 
 function prepareDogodaAnalyser() {
@@ -310,26 +313,31 @@ function prepareDogodaAnalyser() {
 function emitDogodaBeat() {
   dogodaBeatPulse = 1;
   dogodaBeatSerial++;
-  for (const tower of (towers || [])) {
-    if (!tower.type || tower.type.id !== 'dogoda') continue;
-    // Floating music notes and little sparks make the whole area feel alive.
-    for (let i = 0; i < 3; i++) {
-      const life = 0.55 + Math.random() * 0.5;
+  for (const source of (towers || [])) {
+    if (!source.type || source.type.id !== 'dogoda') continue;
+    // Music notes now travel from DOGODA to the regular towers it is boosting.
+    // No area rings/circles are needed: the moving notes visualize the support buff.
+    for (const target of (towers || [])) {
+      if (target === source || !target.type || target.type.support) continue;
+      if (Math.hypot(target.x - source.x, target.y - source.y) > source.type.supportRange) continue;
+      const life = 1.05;
       musicParticles.push({
-        x: tower.x + (Math.random() - 0.5) * 34,
-        y: tower.y - tower.type.size * 0.35 + (Math.random() - 0.5) * 15,
-        vx: (Math.random() - 0.5) * 62,
-        vy: -36 - Math.random() * 58,
+        x: source.x - source.type.size * 0.05,
+        y: source.y - source.type.size * 0.34,
+        vx: 0, vy: 0,
+        targetTower: target,
+        speed: 300 + Math.random() * 80,
+        arrived: false,
         life, maxLife: life,
         glyph: Math.random() < 0.5 ? '♪' : '♫',
-        size: 12 + Math.random() * 10,
+        size: 14 + Math.random() * 8,
         color: Math.random() < 0.5 ? '#ffe36c' : '#ff79d1',
-        rot: (Math.random() - 0.5) * 0.35,
-        spin: (Math.random() - 0.5) * 1.6
+        rot: (Math.random() - 0.5) * 0.25,
+        spin: (Math.random() - 0.5) * 1.2
       });
     }
   }
-  if (musicParticles.length > 120) musicParticles.splice(0, musicParticles.length - 120);
+  if (musicParticles.length > 160) musicParticles.splice(0, musicParticles.length - 160);
 }
 
 function updateDogodaRhythm(dt) {
@@ -347,11 +355,18 @@ function updateDogodaRhythm(dt) {
   if (!dogodaMusic.paused && dogodaAnalyser && dogodaFrequencyData) {
     try {
       dogodaAnalyser.getByteFrequencyData(dogodaFrequencyData);
-      let bass = 0, count = 0;
+      let bass = 0, bassCount = 0, energy = 0, energyCount = 0;
       for (let i = 1; i <= Math.min(8, dogodaFrequencyData.length - 1); i++) {
-        bass += dogodaFrequencyData[i]; count++;
+        bass += dogodaFrequencyData[i]; bassCount++;
       }
-      bass = count ? bass / count : 0;
+      // Measure a broader band as well as bass, then smooth it to avoid jitter.
+      for (let i = 2; i <= Math.min(48, dogodaFrequencyData.length - 1); i++) {
+        energy += dogodaFrequencyData[i]; energyCount++;
+      }
+      bass = bassCount ? bass / bassCount : 0;
+      const rawVolume = energyCount ? energy / energyCount : 0;
+      const normalizedVolume = Math.max(0, Math.min(1, (rawVolume - 10) / 92));
+      dogodaVolumeLevel += (normalizedVolume - dogodaVolumeLevel) * Math.min(1, dt * 8.5);
       const now = performance.now();
       const baseline = Math.max(12, dogodaBassAverage * 1.22);
       const kick = bass > baseline && bass > dogodaLastBass * 1.10 && now - dogodaLastBeatAt > 220;
@@ -368,8 +383,11 @@ function updateDogodaRhythm(dt) {
     }
   }
 
-  // If the track has a quiet passage or analysis isn't supported, keep the amp
-  // moving to the audio playhead instead of freezing. Live transients take priority.
+  // If audio analysis is unavailable, keep a little metronome motion. When the
+  // music is paused, ease the live volume estimate smoothly back to zero.
+  if (dogodaMusic.paused || !dogodaAnalyser) {
+    dogodaVolumeLevel = Math.max(0, dogodaVolumeLevel - dt * 1.8);
+  }
   const songTime = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
   const beatPeriod = 60 / DOGODA_METRONOME_BPM;
   const beatIndex = Math.floor(songTime / beatPeriod);
@@ -380,9 +398,33 @@ function updateDogodaRhythm(dt) {
   }
 
   for (const particle of musicParticles) {
-    particle.x += particle.vx * dt;
-    particle.y += particle.vy * dt;
-    particle.vy -= 8 * dt;
+    if (particle.targetTower) {
+      // Fly each note toward the tower receiving DOGODA's buff.
+      if (!towers.includes(particle.targetTower)) {
+        particle.life = 0;
+        continue;
+      }
+      const target = particle.targetTower;
+      const tx = target.x;
+      const ty = target.y - target.type.size * 0.40;
+      if (!particle.arrived) {
+        const dx = tx - particle.x, dy = ty - particle.y;
+        const distance = Math.hypot(dx, dy);
+        const step = particle.speed * dt;
+        if (distance <= step + 2) {
+          particle.x = tx; particle.y = ty;
+          particle.arrived = true;
+          particle.life = Math.min(particle.life, 0.22);
+        } else if (distance > 0) {
+          particle.x += dx / distance * step;
+          particle.y += dy / distance * step;
+        }
+      }
+    } else {
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      particle.vy -= 8 * dt;
+    }
     particle.rot += particle.spin * dt;
     particle.life -= dt;
   }
@@ -1097,28 +1139,6 @@ function render() {
     drawImg(isPath ? 'dirt' : 'grass', x * TILE, y * TILE, TILE, TILE, isPath ? '#8a5a2b' : '#3d8b37');
   }
 
-  // DOGODA adds a subtle music-stage glow that pulses with the song.
-  if (running) {
-    for (const t of towers) {
-      if (!t.type || t.type.id !== 'dogoda') continue;
-      const pulse = dogodaMotionPulse();
-      const radius = t.type.supportRange * (0.88 + pulse * 0.16);
-      const glow = ctx.createRadialGradient(t.x, t.y, 3, t.x, t.y, radius);
-      glow.addColorStop(0, 'rgba(255,95,190,' + (0.035 + pulse * 0.095) + ')');
-      glow.addColorStop(0.65, 'rgba(255,190,70,' + (0.025 + pulse * 0.065) + ')');
-      glow.addColorStop(1, 'rgba(255,190,70,0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(t.x, t.y, radius, 0, Math.PI * 2); ctx.fill();
-      if (pulse > 0.32) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255,116,210,' + (0.20 + pulse * 0.48) + ')';
-        ctx.lineWidth = 2 + pulse * 2;
-        ctx.beginPath(); ctx.arc(t.x, t.y, t.type.size * (0.72 + pulse * 0.22), 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
-      }
-    }
-  }
-
   const mtx = Math.floor(mouse.x / TILE), mty = Math.floor(mouse.y / TILE);
 
   if (running && selected && mouse.x >= 0) {
@@ -1126,11 +1146,13 @@ function render() {
     const ok = !pathTiles.has(mtx + ',' + mty) && !towers.some(t => t.tx === mtx && t.ty === mty) && money >= T.cost;
     ctx.fillStyle = ok ? 'rgba(255,255,255,.25)' : 'rgba(255,0,0,.35)';
     ctx.fillRect(mtx * TILE, mty * TILE, TILE, TILE);
-    ctx.strokeStyle = ok ? 'rgba(255,255,255,.5)' : 'rgba(255,80,80,.5)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(mtx * TILE + TILE / 2, mty * TILE + TILE / 2, T.range, 0, Math.PI * 2); ctx.stroke();
+    if (!T.support) {
+      ctx.strokeStyle = ok ? 'rgba(255,255,255,.5)' : 'rgba(255,80,80,.5)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(mtx * TILE + TILE / 2, mty * TILE + TILE / 2, T.range, 0, Math.PI * 2); ctx.stroke();
+    }
   } else if (running && !selected && mouse.x >= 0) {
     const ht = towers.find(t => t.tx === mtx && t.ty === mty);
-    if (ht) {
+    if (ht && !ht.type.support) {
       ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(ht.x, ht.y, ht.type.range, 0, Math.PI * 2); ctx.stroke();
     }
@@ -1140,20 +1162,15 @@ function render() {
   if (running && selTower) {
     ctx.fillStyle = 'rgba(255,255,0,.2)';
     ctx.fillRect(selTower.tx * TILE, selTower.ty * TILE, TILE, TILE);
-    ctx.strokeStyle = 'rgba(255,255,0,.8)'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(selTower.x, selTower.y, selTower.type.range, 0, Math.PI * 2); ctx.stroke();
+    // DOGODA is a supporter, so no attack-range circle is shown for it.
+    if (!selTower.type.support) {
+      ctx.strokeStyle = 'rgba(255,255,0,.8)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(selTower.x, selTower.y, selTower.type.range, 0, Math.PI * 2); ctx.stroke();
+    }
   }
 
   for (const t of towers) {
     const T = t.type, s = T.size;
-    if (T.support) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,210,88,.42)';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 7]);
-      ctx.beginPath(); ctx.arc(t.x, t.y, T.supportRange, 0, Math.PI * 2); ctx.stroke();
-      ctx.restore();
-    }
     const musicPulse = T.id === 'dogoda' ? dogodaMotionPulse() : 0;
     const rhythmTime = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
     const rhythmicBop = T.id === 'dogoda' ? Math.sin(rhythmTime * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2) * 0.025 : 0;
@@ -1176,25 +1193,32 @@ function render() {
       const phase = beat * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
       const propShake = Math.sin(phase * 0.5) * (2 + musicPulse * 4);
       const propBounce = -musicPulse * 4 + Math.sin(phase) * 1.5;
-      // AMP on the left.
+      // AMP sits on the ground farther to DOGODA's left. It grows, jitters and
+      // stretches using the actual song volume rather than a decorative circle.
+      const ampVolume = !dogodaMusic.paused && dogodaAnalyser
+        ? Math.max(dogodaVolumeLevel, dogodaBeatPulse * 0.28)
+        : musicPulse * 0.52;
+      const ampShakeX = Math.sin(time * 36 + t.tx) * (1.2 + ampVolume * 4.2);
+      const ampShakeY = Math.sin(time * 47 + t.ty) * (0.8 + ampVolume * 3.0) - musicPulse * 1.5;
+      const ampStretchX = 1.0 + ampVolume * 0.25;
+      const ampStretchY = 1.0 + ampVolume * 0.20 + dogodaBeatPulse * 0.08;
       ctx.save();
       ctx.filter = 'none';
-      ctx.translate(t.x - s * 0.48 + shakeX - propShake, t.y + s * 0.20 + shakeY + propBounce);
-      ctx.rotate(Math.sin(phase) * (0.025 + musicPulse * 0.11));
-      drawImg('ampProjectile', -s * 0.24, -s * 0.22, s * 0.48, s * 0.44, '#68452b');
-      if (musicPulse > 0.18) {
-        ctx.globalAlpha = 0.25 + musicPulse * 0.55;
-        ctx.strokeStyle = musicPulse > 0.58 ? '#ff78d4' : '#ffe36c';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0, 0, s * (0.19 + musicPulse * 0.06), 0, Math.PI * 2); ctx.stroke();
-      }
+      ctx.translate(t.x - s * 0.96 - propShake + ampShakeX,
+                    t.y + s * 0.08 + shakeY + ampShakeY + propBounce * 0.35);
+      ctx.rotate(Math.sin(phase * 0.7 + time * 2) * (0.018 + ampVolume * 0.075));
+      ctx.scale(ampStretchX, ampStretchY);
+      // Nearly twice the former size, with its bottom aligned to the ground.
+      drawImg('ampProjectile', -s * 0.48, -s * 0.44, s * 0.96, s * 0.88, '#68452b');
       ctx.restore();
-      // GUITAR on the right, bobbing and rocking like the character is playing it.
+      // GUITAR is large and held across DOGODA's torso, angled like a real playing pose.
+      // It stays in the character's hands (visual layer), rather than floating at the side or firing as a projectile.
       ctx.save();
       ctx.filter = 'none';
-      ctx.translate(t.x + s * 0.48 + shakeX + propShake, t.y + s * 0.20 + shakeY + propBounce);
-      ctx.rotate(Math.sin(phase + 0.8) * (0.04 + musicPulse * 0.16));
-      drawImg('guitar', -s * 0.28, -s * 0.15, s * 0.56, s * 0.30, '#e7b63c');
+      ctx.translate(t.x + s * 0.08 + shakeX + propShake * 0.45,
+                    t.y - s * 0.04 + shakeY + propBounce * 0.45);
+      ctx.rotate(-0.48 + Math.sin(phase + 0.8) * (0.025 + musicPulse * 0.12));
+      drawImg('guitar', -s * 0.53, -s * 0.30, s * 1.06, s * 0.60, '#e7b63c');
       ctx.restore();
     }
 
@@ -1208,12 +1232,6 @@ function render() {
     if (T.weapon && images[T.weapon]) ctx.drawImage(images[T.weapon], 0, -h / 2, w, h);
     else if (!T.support) { ctx.fillStyle = '#ccc'; ctx.fillRect(0, -4, w, 8); }
     ctx.restore();
-    if (t.buffed) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,232,104,.9)'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(t.x, t.y, s * .58, 0, Math.PI * 2); ctx.stroke();
-      ctx.restore();
-    }
   }
 
   // Notes and sparks float out of DOGODA on beat; they animate with the song and fade smoothly.
@@ -1271,15 +1289,9 @@ function render() {
     const s = b.type.bulletSize;
     const pulse = isGuitar ? dogodaMotionPulse() : 0;
     ctx.save();
-    // DOGODA's guitar stays untinted, spins like a flying pick, and flashes to the beat.
-    if (isGuitar) {
-      ctx.globalAlpha = 0.28 + pulse * 0.34;
-      ctx.strokeStyle = pulse > 0.55 ? '#ff77d2' : '#ffe36c';
-      ctx.lineWidth = 2 + pulse * 2;
-      ctx.beginPath(); ctx.arc(b.x, b.y, s * (0.46 + pulse * 0.22), 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.filter = 'none';
-    } else setHue(b.type.hue);
+    // Support-only DOGODA never fires projectiles; this renderer remains for ordinary towers.
+    if (isGuitar) ctx.filter = 'none';
+    else setHue(b.type.hue);
     ctx.translate(b.x, b.y);
     const spin = isGuitar ? Math.sin(time * 22 + (b.phase || 0)) * 0.38 + (time - (b.birthTime || time)) * 3.6 : 0;
     ctx.rotate(b.angle + spin);
