@@ -47,13 +47,7 @@
   #menu .menu-bg { position: absolute !important; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0 !important; pointer-events: none; }
   #maps::before, #deck::before, #end::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: url('images/textures/mainmenu.png') center / cover no-repeat; }
   #menu::after, #maps::after, #deck::after, #end::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.48)); }
-  #menu .cloud { position: absolute !important; display: block; width: 240px; height: auto; image-rendering: auto; object-fit: contain; filter: none !important; -webkit-filter: none !important; z-index: 2 !important; pointer-events: none; opacity: 1; animation: cloudDrift 34s linear infinite, cloudJiggle 2.8s ease-in-out infinite; backface-visibility: visible; }
-  @keyframes cloudJiggle {
-    0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
-    25% { translate: 0 -5px; rotate: -1.2deg; scale: 1.025; }
-    50% { translate: 0 2px; rotate: 1deg; scale: 1.04; }
-    75% { translate: 0 -3px; rotate: -.6deg; scale: 1.015; }
-  }
+  #menu .cloud { position: absolute !important; display: block; width: 240px; height: auto; image-rendering: auto; object-fit: contain; filter: none !important; -webkit-filter: none !important; z-index: 2 !important; pointer-events: none; opacity: .95; animation: cloudDrift 34s linear infinite; backface-visibility: visible; }
   #menu .cloud.c1 { top: 8%; left: -280px; animation-delay: -7s; }
   #menu .cloud.c2 { top: 27%; left: -340px; width: 180px; opacity: .8; animation-duration: 46s; animation-delay: -25s; }
   @keyframes cloudDrift { 0% { transform: translateX(0); } 100% { transform: translateX(1500px); } }
@@ -67,6 +61,16 @@
   @keyframes swayL { 0%,100% { transform: rotate(-.8deg); } 50% { transform: rotate(.8deg); } }
   @keyframes swayR { 0%,100% { transform: scaleX(-1) rotate(-.8deg); } 50% { transform: scaleX(-1) rotate(.8deg); } }
   #leafCv { position: absolute !important; top: 0; left: 0; width: 960px; height: 720px; background: transparent; z-index: 3 !important; pointer-events: none; }
+  /* First-load screen: the NEXT click also unlocks browser audio playback. */
+  #loadingScreen { position:absolute; inset:0; z-index:1000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; overflow:hidden; background:#18251b url('images/textures/mainmenu.png') center/cover no-repeat; text-align:center; }
+  #loadingScreen::before { content:""; position:absolute; inset:0; background:rgba(0,0,0,.42); pointer-events:none; }
+  #loadingScreen > * { position:relative; z-index:1; }
+  #loadingTitle { margin:0; font-size:28px; line-height:1.7; color:#fff3d6; text-shadow:4px 4px 0 #3a200c; animation:none; }
+  #loadingStatus { font-size:10px; line-height:2; color:#fff3d6; text-shadow:2px 2px #000; }
+  #loadingTrack { width:min(440px,80%); height:22px; border:4px solid #3a200c; background:#172016; padding:2px; }
+  #loadingFill { height:100%; width:0%; background:#8bca68; transition:width .25s ease; }
+  #nextButton { display:none; min-width:240px; margin:0; font-size:18px; padding:18px 28px; }
+  #nextButton.ready { display:block; }
   .hidden { display: none !important; }
   h1 { font-size: 40px; margin: 0 0 40px; line-height: 1.5; color: #fff3d6; text-shadow: 4px 4px 0 #3a200c; animation: floaty 5s ease-in-out infinite; }
   @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
@@ -76,14 +80,6 @@
     margin: 12px; padding: 20px 34px; min-width: 340px; border: 6px solid #3a200c; background: #8b5a2b;
     box-shadow: inset 0 6px 0 #a67440, inset 0 -6px 0 #6b4423; transition: transform .15s, background .15s; }
   .rbtn:hover { background: #a06a35; transform: scale(1.04); }
-  #menu .rbtn { animation: buttonJiggle 2.4s ease-in-out infinite; }
-  #menu .rbtn:nth-of-type(2) { animation-delay: -.8s; }
-  @keyframes buttonJiggle {
-    0%, 100% { translate: 0 0; rotate: 0deg; }
-    20% { translate: 0 -2px; rotate: -.4deg; }
-    45% { translate: 0 1px; rotate: .35deg; }
-    70% { translate: 0 -1px; rotate: -.2deg; }
-  }
   .rbtn.small { font-size: 14px; min-width: 200px; padding: 14px 20px; background: #6b4423; }
   .rbtn.small:hover { background: #805530; }
   .gemrow { display: flex; align-items: center; gap: 10px; font-size: 16px; color: #fff3d6; text-shadow: 2px 2px 0 #3a200c; margin-bottom: 20px; }
@@ -99,6 +95,12 @@
 <body>
 <div id="wrap">
 <div id="stage">
+  <div id="loadingScreen" aria-live="polite">
+    <h1 id="loadingTitle">PEACE IS SOLD</h1>
+    <div id="loadingStatus">LOADING... 0%</div>
+    <div id="loadingTrack"><div id="loadingFill"></div></div>
+    <button class="rbtn" id="nextButton" type="button">NEXT</button>
+  </div>
 
   <div id="hud">
     <div>
@@ -187,57 +189,80 @@ const IMG = {
   efe:        'images/towers/efe.png'
 };
 
-// Main-menu music: audios/mainmenu.mp3. Start as early as the browser allows.
-// Browsers block audible autoplay until the visitor has interacted once; after
-// that first gesture, keep the track running across menu/map/deck/end screens.
+// Main-menu music. It is intentionally NOT started on page load: the
+// loading screen's NEXT button is the user's gesture that unlocks audio in browsers.
 const menuMusic = new Audio('audios/mainmenu.mp3');
 menuMusic.loop = true;
 menuMusic.preload = 'auto';
 menuMusic.volume = 0.45;
-let musicWanted = true;
+let musicWanted = false;
 let gameplayMusicMuted = false;
 function startMenuMusic() {
   musicWanted = true;
   gameplayMusicMuted = false;
   if (menuMusic.paused) {
     const attempt = menuMusic.play();
-    if (attempt && attempt.catch) attempt.catch(() => {});
+    if (attempt && attempt.catch) attempt.catch(err => console.warn('Menu music could not start:', err));
   }
 }
 function stopMenuMusic() {
   gameplayMusicMuted = true;
+  musicWanted = false;
   menuMusic.pause();
   try { menuMusic.currentTime = 0; } catch (e) {}
 }
-function syncMenuMusic() {
-  if (gameplayMusicMuted || !musicWanted) return;
-  if (menuMusic.paused) {
-    const attempt = menuMusic.play();
-    if (attempt && attempt.catch) attempt.catch(() => {});
+menuMusic.addEventListener('error', () => console.error('Music failed to load. Check that audios/mainmenu.mp3 exists next to the HTML file.', menuMusic.error));
+
+// Wait for the menu background/cloud and audio to load, then reveal NEXT.
+// Audio errors do not trap the player on the loading screen.
+const loadingAssets = [
+  'images/textures/mainmenu.png', 'images/textures/cloud.png', 'images/textures/tree.png',
+  'images/textures/grass.png', 'images/textures/dirt.png', 'images/textures/gems.png',
+  'images/textures/leaves.png', 'images/enemies/greenistan.png', 'images/enemies/redistan.png',
+  'images/weapons/atardeli.png', 'images/weapons/knife.png', 'images/projectiles/deli.png',
+  'images/towers/delici.png', 'images/towers/dolten.png', 'images/towers/efe.png'
+];
+const loadingScreen = document.getElementById('loadingScreen');
+const loadingStatus = document.getElementById('loadingStatus');
+const loadingFill = document.getElementById('loadingFill');
+const nextButton = document.getElementById('nextButton');
+let loadingDone = false;
+let loadedCount = 0;
+const totalToLoad = loadingAssets.length + 1;
+function updateLoading() {
+  const pct = Math.min(100, Math.round(loadedCount / totalToLoad * 100));
+  loadingStatus.textContent = loadingDone ? 'READY!' : 'LOADING... ' + pct + '%';
+  loadingFill.style.width = pct + '%';
+  if (loadedCount >= totalToLoad && !loadingDone) {
+    loadingDone = true;
+    loadingStatus.textContent = 'READY!';
+    loadingFill.style.width = '100%';
+    nextButton.classList.add('ready');
   }
 }
-menuMusic.addEventListener('error', () => console.error('Music failed to load. Check that audios/mainmenu.mp3 exists next to the HTML file.', menuMusic.error));
-menuMusic.addEventListener('canplay', syncMenuMusic);
-// Attempt audible autoplay immediately on page load. Browsers may still block
-// sound until the site has autoplay permission or a prior user interaction.
-startMenuMusic();
-// Retry autoplay as soon as the first real user interaction happens.
-// If the browser allows autoplay, the track starts immediately on page load.
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', syncMenuMusic, { once: true });
-} else {
-  syncMenuMusic();
-}
-['pointerdown', 'keydown', 'touchstart'].forEach(eventName => {
-  document.addEventListener(eventName, () => {
-    if (!gameplayMusicMuted) syncMenuMusic();
-  }, { passive: true });
+loadingAssets.forEach(src => {
+  const img = new Image();
+  const finish = () => { loadedCount++; updateLoading(); };
+  img.onload = finish;
+  img.onerror = finish;
+  img.src = src;
+  if (img.complete) finish();
 });
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && !gameplayMusicMuted) syncMenuMusic();
-});
-window.addEventListener('pageshow', () => {
-  if (!gameplayMusicMuted) syncMenuMusic();
+let audioLoadFinished = false;
+const finishAudioLoad = () => {
+  if (audioLoadFinished) return;
+  audioLoadFinished = true;
+  loadedCount++;
+  updateLoading();
+};
+menuMusic.addEventListener('canplaythrough', finishAudioLoad, { once: true });
+menuMusic.addEventListener('error', finishAudioLoad, { once: true });
+menuMusic.load();
+// Don't let a missing/slow MP3 prevent the NEXT button from appearing.
+setTimeout(finishAudioLoad, 5000);
+nextButton.addEventListener('click', () => {
+  loadingScreen.style.display = 'none';
+  startMenuMusic(); // click is the browser-approved audio gesture
 });
 
 const TILE = 64, COLS = 15, ROWS = 9;
