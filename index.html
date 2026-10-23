@@ -267,7 +267,7 @@ nextButton.addEventListener('click', () => {
 });
 
 const TILE = 64, COLS = 15, ROWS = 9;
-const START_MONEY = 120, MAX_WAVE = 10, AUTO_WAVE_DELAY = 5;
+const START_MONEY = 120, MAX_WAVE = 10;
 
 /* Towers. placeable:false = only via upgrade. gemCost = must be bought in DECK first. */
 const TOWER_TYPES = [
@@ -326,7 +326,7 @@ ctx.imageSmoothingEnabled = false;
 const $ = id => document.getElementById(id);
 let time = 0;
 let enemies, towers, bullets, money, baseHp, wave, spawnQueue, spawnTimer, waveActive, running, last,
-    autoWaveTimer = 0, selected = null, selTower = null, mouse = { x: -1, y: -1 }, earnedGems = 0;
+    selected = null, selTower = null, mouse = { x: -1, y: -1 }, earnedGems = 0, skipReadyNotified = false;
 
 /* ================== RANDOM PATH ================== */
 function genPath() {
@@ -489,7 +489,7 @@ function reset() {
   genPath();
   enemies = []; towers = []; bullets = [];
   money = START_MONEY; baseHp = 100; wave = 0;
-  spawnQueue = []; spawnTimer = 0; waveActive = false; autoWaveTimer = 0; selected = null; selTower = null;
+  spawnQueue = []; spawnTimer = 0; waveActive = false; skipReadyNotified = false; selected = null; selTower = null;
   buildShop();
   hud();
 }
@@ -502,9 +502,7 @@ function hud() {
   $('baseFill').style.background = pct > 50 ? '#0f0' : pct > 25 ? '#fd0' : '#f33';
   $('wave').textContent = wave;
   $('maxwave').textContent = MAX_WAVE;
-  const skipButton = $('btnSkipWave');
-  skipButton.disabled = !(running && !waveActive && wave < MAX_WAVE && autoWaveTimer > 0);
-  skipButton.textContent = autoWaveTimer > 0 ? 'SKIP WAVE (' + Math.ceil(autoWaveTimer) + ')' : 'SKIP WAVE';
+  syncSkipWaveButton(false);
   refreshShop();
   refreshInfo();
 }
@@ -521,22 +519,43 @@ function bump() {
 }
 
 /* ================== WAVES ================== */
-function scheduleNextWave(message) {
-  if (!running || wave >= MAX_WAVE) return;
-  autoWaveTimer = AUTO_WAVE_DELAY;
-  hud();
-  flash(message || ('WAVE ' + (wave + 1) + ' STARTS IN ' + AUTO_WAVE_DELAY + 's — PRESS SKIP WAVE!'));
+function currentWaveEnemyCount() {
+  return (enemies || []).reduce((count, enemy) => count + (enemy.waveId === wave ? 1 : 0), 0);
+}
+
+// SKIP WAVE unlocks only when the active wave is close to ending.
+// Include queued mobs and living mobs from this wave, not older skipped-wave mobs.
+function canSkipWave() {
+  if (!running || !waveActive || wave >= MAX_WAVE) return false;
+  const totalMobs = 7 + wave * 3;
+  const remaining = spawnQueue.length + currentWaveEnemyCount();
+  const threshold = Math.max(4, Math.ceil(totalMobs * 0.24));
+  return remaining <= threshold;
+}
+
+function syncSkipWaveButton(showNotification = true) {
+  const button = $('btnSkipWave');
+  const ready = canSkipWave();
+  button.disabled = !ready;
+  button.textContent = 'SKIP WAVE';
+  if (ready && !skipReadyNotified) {
+    skipReadyNotified = true;
+    if (showNotification) flash('SKIP WAVE AVAILABLE!');
+  }
 }
 
 function skipWave() {
-  if (!running || waveActive || wave >= MAX_WAVE || autoWaveTimer <= 0) return;
-  const next = wave + 1;
-  startWave('SKIPPED WAIT — WAVE ' + next + ' STARTED!');
+  if (!canSkipWave()) return;
+  const skippedWave = wave;
+  // Ignore this wave's remaining queued spawns; already-spawned mobs stay on the map.
+  // The next wave starts immediately and overlaps remaining enemies.
+  spawnQueue = [];
+  waveActive = false;
+  startWave('WAVE ' + (skippedWave + 1) + ' STARTED!');
 }
 
 function startWave(startMessage) {
   if (waveActive || wave >= MAX_WAVE || !running) return;
-  autoWaveTimer = 0;
   wave++;
   spawnQueue = [];
   const n = 7 + wave * 3;
@@ -544,6 +563,7 @@ function startWave(startMessage) {
   for (let i = 0; i < n; i++) spawnQueue.push(Math.random() < redChance && wave > 1 ? 'redistan' : 'greenistan');
   spawnTimer = 0;
   waveActive = true;
+  skipReadyNotified = false;
   hud();
   flash(startMessage || ('WAVE ' + wave + ' STARTED!'));
 }
@@ -552,7 +572,7 @@ function spawnEnemy(type) {
   const d = ENEMY[type];
   const hpMul = 1 + (wave - 1) * 0.28;
   const spMul = 1 + (wave - 1) * 0.03;
-  enemies.push({ type, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
+  enemies.push({ type, waveId: wave, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
     hp: d.hp * hpMul, maxHp: d.hp * hpMul, speed: d.speed * spMul, reward: d.reward, size: d.size,
     dmg: d.dmg, img: type, dir: 1 });
 }
@@ -608,12 +628,10 @@ function startGame() {
   stopMenuMusic();
   ['menu', 'maps', 'deck', 'end'].forEach(s => $(s).classList.add('hidden'));
   running = true; reset();
-  scheduleNextWave('FIRST WAVE IN ' + AUTO_WAVE_DELAY + 's — PRESS SKIP WAVE TO START NOW!');
-  flash('FIRST WAVE IN ' + AUTO_WAVE_DELAY + 's — PRESS SKIP WAVE TO START NOW!');
+  startWave('WAVE 1 STARTED!');
 }
 function toMenu() {
   running = false;
-  autoWaveTimer = 0;
   startMenuMusic();
   selected = null; selTower = null;
   refreshInfo();
@@ -621,7 +639,6 @@ function toMenu() {
 }
 function endGame(win) {
   running = false;
-  autoWaveTimer = 0;
   startMenuMusic();
   earnedGems = Math.floor(wave * 3 + (win ? 25 : 0) + (win ? baseHp / 10 : 0));
   gems += earnedGems; save();
@@ -633,17 +650,14 @@ function endGame(win) {
 
 /* ================== UPDATE ================== */
 function update(dt) {
-  if (running && !waveActive && autoWaveTimer > 0 && wave < MAX_WAVE) {
-    const oldSeconds = Math.ceil(autoWaveTimer);
-    autoWaveTimer = Math.max(0, autoWaveTimer - dt);
-    const seconds = Math.ceil(autoWaveTimer);
-    $('btnSkipWave').textContent = autoWaveTimer > 0 ? 'SKIP WAVE (' + seconds + ')' : 'SKIP WAVE';
-    if (seconds !== oldSeconds && seconds > 0) flash('NEXT WAVE IN ' + seconds + 's — PRESS SKIP WAVE!');
-    if (autoWaveTimer <= 0) startWave();
-  }
+  syncSkipWaveButton(true);
   if (waveActive && spawnQueue.length) {
     spawnTimer -= dt;
-    if (spawnTimer <= 0) { spawnEnemy(spawnQueue.shift()); spawnTimer = Math.max(0.35, 0.85 - wave * 0.05); }
+    if (spawnTimer <= 0) {
+      spawnEnemy(spawnQueue.shift());
+      // Later waves pour out faster, so a skipped wave feels immediate.
+      spawnTimer = Math.max(0.12, 0.30 - wave * 0.018);
+    }
   }
 
   for (const e of enemies) {
@@ -700,13 +714,14 @@ function update(dt) {
   for (const e of enemies) if (e.hp <= 0) { money += e.reward; hud(); }
   enemies = enemies.filter(e => e.hp > 0);
 
-  if (waveActive && !spawnQueue.length && !enemies.length) {
+  if (waveActive && !spawnQueue.length && !enemies.some(enemy => enemy.waveId === wave)) {
     waveActive = false;
     const bonus = 15 + wave * 3;
     money += bonus;
     hud();
     if (wave >= MAX_WAVE) return endGame(true);
-    scheduleNextWave('WAVE ' + wave + ' CLEARED! +' + bonus + ' GOLD — NEXT WAVE AUTO-STARTS IN ' + AUTO_WAVE_DELAY + 's');
+    // No next-wave countdown: launch the next wave straight away.
+    startWave('WAVE ' + (wave + 1) + ' STARTED! +' + bonus + ' GOLD');
   }
   if (baseHp <= 0) endGame(false);
 }
