@@ -36,6 +36,16 @@
   .tbtn.sel { background: #3a7; outline: 4px solid #ff0; }
   .tbtn.poor { opacity: .45; }
   .tbtn .ico { width: 36px; height: 36px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .tbtn .ico.dogoda-mini { position:relative; background:none !important; filter:none !important; }
+  .dogoda-mini img { position:absolute; object-fit:contain; image-rendering:pixelated; filter:none !important; -webkit-filter:none !important; }
+  .dogoda-mini .mini-body { width:27px; height:27px; left:5px; top:0; z-index:1; }
+  .dogoda-mini .mini-amp { width:16px; height:15px; left:0; bottom:0; z-index:2; }
+  .dogoda-mini .mini-guitar { width:18px; height:11px; right:0; bottom:1px; z-index:3; }
+  .dogoda-shop-preview { position:relative; background:none !important; filter:none !important; }
+  .dogoda-shop-preview img { position:absolute; object-fit:contain; image-rendering:pixelated; filter:none !important; -webkit-filter:none !important; }
+  .dogoda-shop-preview .preview-body { width:65px; height:65px; left:8px; top:0; z-index:1; }
+  .dogoda-shop-preview .preview-amp { width:34px; height:31px; left:0; bottom:0; z-index:2; }
+  .dogoda-shop-preview .preview-guitar { width:39px; height:23px; right:0; bottom:0; z-index:3; }
 
   #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(61,40,25,.94); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
   #info .hbtn { margin: 6px 6px 0 0; font-size: 9px; padding: 8px; }
@@ -395,7 +405,7 @@ const loadingAssets = [
   'images/textures/leaves.png', 'images/enemies/greenistan.png', 'images/enemies/redistan.png',
   'images/weapons/atardeli.png', 'images/weapons/knife.png', 'images/projectiles/deli.png',
   'images/towers/delici.png', 'images/towers/dolten.png', 'images/towers/efe.png',
-  'images/towers/amp.png', 'images/projectiles/guitar.png'
+  'images/towers/dogoda.png', 'images/projectiles/guitar.png', 'images/projectiles/amp.png'
 ];
 const loadingScreen = document.getElementById('loadingScreen');
 const loadingStatus = document.getElementById('loadingStatus');
@@ -466,10 +476,10 @@ const TOWER_TYPES = [
   { id: 'efe', name: 'EFE', cost: 70, range: 80, cooldown: 0.4, damage: 3.5, melee: true,
     size: 58, weaponLen: 34, body: 'efe', fb: 'delice', fbHue: 90, weapon: 'knife', hue: 0, placeable: true, gemCost: 40,
     description: 'Close-range melee tower.' },
-  { id: 'dogoda', name: 'DOGODA', cost: 900, range: 230, cooldown: 1.05, damage: 6, bulletSpeed: 430, bulletSize: 30,
-    size: 66, weaponLen: 0, body: 'dogoda', weapon: null, bullet: 'guitar', bulletAlt: 'ampProjectile', hue: 0, placeable: true, gemCost: 100,
+  { id: 'dogoda', name: 'DOGODA', cost: 250, range: 205, cooldown: 0, damage: 0, bulletSpeed: 0, bulletSize: 0,
+    size: 60, weaponLen: 0, body: 'dogoda', weapon: null, bullet: null, hue: 0, placeable: true, gemCost: 100,
     support: true, supportRange: 205, attackBoost: 1.35,
-    description: 'Supporter tower: plays music, boosts nearby towers, and fires guitar/amp projectiles.' }
+    description: 'Support-only tower: plays dogoda.mp3 and boosts nearby towers by 35%. It never attacks enemies.' }
 ];
 
 /* Enemies: dmg = % of base health taken when they reach the base */
@@ -598,7 +608,11 @@ function buildShop() {
     b.className = 'tbtn';
     b.dataset.id = t.id;
     b.title = t.name + ' — ' + t.cost + ' gold';
-    b.innerHTML = '<span class="ico"></span><span>' + t.cost + '</span>';
+    if (t.id === 'dogoda') {
+      b.innerHTML = '<span class="ico dogoda-mini"><img class="mini-body" src="' + IMG.dogoda + '" alt=""><img class="mini-amp" src="' + IMG.ampProjectile + '" alt=""><img class="mini-guitar" src="' + IMG.guitar + '" alt=""></span><span>' + t.cost + '</span>';
+    } else {
+      b.innerHTML = '<span class="ico"></span><span>' + t.cost + '</span>';
+    }
     b.onclick = () => selectTower(selected === t.id ? null : t.id);
     shop.appendChild(b);
   });
@@ -609,10 +623,16 @@ function refreshShop() {
     const t = typeOf(b.dataset.id);
     const ico = b.querySelector('.ico');
     const k = bodyOf(t);
-    ico.style.backgroundImage = images[k] ? 'url(' + IMG[k] + ')' : 'none';
-    ico.style.backgroundColor = images[k] ? 'transparent' : '#9b59b6';
-    const h = hueOf(t);
-    ico.style.filter = h ? 'hue-rotate(' + h + 'deg)' : 'none';
+    if (t.id !== 'dogoda') {
+      ico.style.backgroundImage = images[k] ? 'url(' + IMG[k] + ')' : 'none';
+      ico.style.backgroundColor = images[k] ? 'transparent' : '#9b59b6';
+      const h = hueOf(t);
+      ico.style.filter = h ? 'hue-rotate(' + h + 'deg)' : 'none';
+    } else {
+      ico.style.backgroundImage = 'none';
+      ico.style.backgroundColor = 'transparent';
+      ico.style.filter = 'none';
+    }
     b.classList.toggle('sel', selected === t.id);
     b.classList.toggle('poor', money !== undefined && money < t.cost);
   });
@@ -631,8 +651,8 @@ function refreshInfo() {
   const T = selTower.type;
   p.classList.remove('hidden');
   $('iName').textContent = T.name;
-  $('iDmg').textContent = T.support ? 'DAMAGE: ' + T.damage + ' · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK' : 'DAMAGE: ' + T.damage;
-  $('iRng').textContent = T.support ? 'ATTACK RANGE: ' + T.range + ' · BUFF RANGE: ' + T.supportRange : 'RANGE: ' + T.range;
+  $('iDmg').textContent = T.support ? 'SUPPORT ONLY · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK' : 'DAMAGE: ' + T.damage;
+  $('iRng').textContent = T.support ? 'BUFF RANGE: ' + T.supportRange : 'RANGE: ' + T.range;
   const up = $('btnUp');
   if (T.upgrade) {
     const U = typeOf(T.upgrade);
@@ -663,7 +683,10 @@ function towerCard(t, statusText, buttonLabel, onBuy, disabled=false) {
   // Use the exact asset URL even while Image() is still loading, so the shop
   // never renders an empty placeholder just because the preload hasn't ended.
   const iconStyle = (IMG[k] ? 'background-image:url(' + IMG[k] + ');background-color:transparent;' : 'background-color:#9b59b6;') + (h ? 'filter:hue-rotate(' + h + 'deg);' : '');
-  c.innerHTML = '<div class="ico" style="width:76px;height:76px;background-size:contain;background-repeat:no-repeat;background-position:center;margin:0 auto 8px;' + iconStyle + '"></div>' +
+  const preview = t.id === 'dogoda'
+    ? '<div class="ico dogoda-shop-preview" style="width:96px;height:80px;margin:0 auto 8px;"><img class="preview-body" src="' + IMG.dogoda + '" alt="DOGODA"><img class="preview-amp" src="' + IMG.ampProjectile + '" alt="AMP"><img class="preview-guitar" src="' + IMG.guitar + '" alt="GUITAR"></div>'
+    : '<div class="ico" style="width:76px;height:76px;background-size:contain;background-repeat:no-repeat;background-position:center;margin:0 auto 8px;' + iconStyle + '"></div>';
+  c.innerHTML = preview +
     '<strong>' + t.name + '</strong><div class="tower-desc">' + (t.description || '') + '</div>' +
     '<span class="shop-price">BUILD: ' + t.cost + ' GOLD' + (t.gemCost !== undefined ? ' · UNLOCK: ' + t.gemCost + ' GEMS' : '') + '</span>' +
     '<span style="color:#b8ef9a">' + statusText + '</span>';
@@ -989,9 +1012,11 @@ function update(dt) {
 
   for (const t of towers) {
     const T = t.type;
-    t.cd -= dt;
     t.punch *= Math.exp(-dt * 10);
     if (t.punch < 0.01) t.punch = 0;
+    // Support-only towers such as DOGODA never target enemies or create bullets.
+    if (T.support) { t.aim = 0; t.cd = 0; continue; }
+    t.cd -= dt;
     let best = null, bd = T.range;
     for (const e of enemies) {
       const d = Math.hypot(e.x - t.x, e.y - t.y);
@@ -1144,16 +1169,32 @@ function render() {
     drawImg(bodyOf(T), -s / 2, -s, s, s, '#9b59b6');
     ctx.restore();
 
-    // A quick speaker-cone pulse makes the amp look like it is actually playing.
-    if (T.id === 'dogoda' && musicPulse > 0.18) {
+    // DOGODA keeps its character sprite, with the guitar and amplifier beside it.
+    // These are decorative props (not projectiles): both shake/bounce to the song.
+    if (T.id === 'dogoda') {
+      const beat = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
+      const phase = beat * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
+      const propShake = Math.sin(phase * 0.5) * (2 + musicPulse * 4);
+      const propBounce = -musicPulse * 4 + Math.sin(phase) * 1.5;
+      // AMP on the left.
       ctx.save();
-      ctx.globalAlpha = 0.18 + musicPulse * 0.55;
-      ctx.strokeStyle = musicPulse > 0.58 ? '#ff78d4' : '#ffe36c';
-      ctx.lineWidth = 2 + musicPulse * 2;
-      const speakerY = t.y + s * 0.13;
-      const speakerR = s * (0.12 + musicPulse * 0.035);
-      ctx.beginPath(); ctx.arc(t.x - s * 0.16 + shakeX, speakerY + shakeY, speakerR, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(t.x + s * 0.16 + shakeX, speakerY + shakeY, speakerR, 0, Math.PI * 2); ctx.stroke();
+      ctx.filter = 'none';
+      ctx.translate(t.x - s * 0.48 + shakeX - propShake, t.y + s * 0.20 + shakeY + propBounce);
+      ctx.rotate(Math.sin(phase) * (0.025 + musicPulse * 0.11));
+      drawImg('ampProjectile', -s * 0.24, -s * 0.22, s * 0.48, s * 0.44, '#68452b');
+      if (musicPulse > 0.18) {
+        ctx.globalAlpha = 0.25 + musicPulse * 0.55;
+        ctx.strokeStyle = musicPulse > 0.58 ? '#ff78d4' : '#ffe36c';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, s * (0.19 + musicPulse * 0.06), 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+      // GUITAR on the right, bobbing and rocking like the character is playing it.
+      ctx.save();
+      ctx.filter = 'none';
+      ctx.translate(t.x + s * 0.48 + shakeX + propShake, t.y + s * 0.20 + shakeY + propBounce);
+      ctx.rotate(Math.sin(phase + 0.8) * (0.04 + musicPulse * 0.16));
+      drawImg('guitar', -s * 0.28, -s * 0.15, s * 0.56, s * 0.30, '#e7b63c');
       ctx.restore();
     }
 
@@ -1225,7 +1266,7 @@ function render() {
   }
 
   for (const b of bullets) {
-    const isGuitar = b.type.id === 'dogoda';
+    const isGuitar = b.type.id === 'dogoda'; // legacy guard; support-only DOGODA never creates bullets
     const projectileName = b.projectile || b.type.bullet;
     const s = b.type.bulletSize;
     const pulse = isGuitar ? dogodaMotionPulse() : 0;
