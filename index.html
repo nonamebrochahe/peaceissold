@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peace is Sold</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; image-rendering: pixelated; }
+  html, body { margin: 0; height: 100%; background: #111; color: #fff;
+    font-family: 'Press Start 2P', 'Courier New', monospace; overflow: hidden; }
+  #wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  #wrap.bump { animation: bump .45s linear; }
+  @keyframes bump {
+    0% { transform: translate(0,0); } 12% { transform: translate(-16px, 8px); } 25% { transform: translate(14px, -10px); }
+    38% { transform: translate(-12px, -6px); } 50% { transform: translate(10px, 8px); } 62% { transform: translate(-8px, 4px); }
+    75% { transform: translate(6px, -4px); } 88% { transform: translate(-3px, 2px); } 100% { transform: translate(0,0); }
+  }
+  #stage { position: relative; width: 960px; height: 720px; transform-origin: center center; flex: none; }
+  canvas { position: absolute; top: 64px; left: 0; width: 960px; height: 576px; background: #2a2a2a; image-rendering: pixelated; }
+  #hud { position: absolute; top: 0; left: 0; width: 960px; height: 64px; background: #1b1b2f;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; border-bottom: 4px solid #444; }
+  #hud span { margin-right: 14px; }
+  #baseBar { display: inline-block; width: 90px; height: 14px; background: #400; border: 3px solid #000; vertical-align: middle; margin-left: 6px; }
+  #baseFill { height: 100%; width: 100%; background: #0f0; }
+  .hbtn { font-family: inherit; font-size: 12px; padding: 10px 12px; background: #3a7; color: #fff; border: 4px solid #000; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; cursor: pointer; margin-left: 6px; }
+  .hbtn:disabled { background: #555; cursor: not-allowed; }
+
+  /* BOTTOM SHOP: small square buttons, price only */
+  #shop { position: absolute; top: 640px; left: 0; width: 960px; height: 80px; background: #1b1b2f;
+    border-top: 4px solid #444; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .tbtn { position: relative; width: 66px; height: 66px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    background: #2e2e4d; border: 4px solid #000; color: #fd0; font-family: inherit; font-size: 10px; cursor: pointer; text-shadow: 2px 2px 0 #000; }
+  .tbtn:hover { background: #3d3d66; }
+  .tbtn.sel { background: #3a7; outline: 4px solid #ff0; }
+  .tbtn.poor { opacity: .45; }
+  .tbtn .ico { width: 36px; height: 36px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+
+  #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(15,15,35,.92); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
+  #info .hbtn { margin: 6px 6px 0 0; font-size: 9px; padding: 8px; }
+
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, #bfe3c0 0%, #8fc68f 55%, #5f9a62 100%); z-index: 10; text-align: center; padding: 20px; overflow: hidden; }
+  .screen > * { position: relative; z-index: 2; }
+  /* Shared scenic background for the menu, map select, deck and end screens. */
+  #menu, #maps, #deck, #end { background: #18251b; isolation: isolate; }
+  #menu .menu-bg { position: absolute !important; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0 !important; pointer-events: none; }
+  #maps::before, #deck::before, #end::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: url('images/textures/mainmenu.png') center / cover no-repeat; }
+  #menu::after, #maps::after, #deck::after, #end::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.48)); }
+  #menu .cloud { position: absolute !important; display: block; width: 240px; height: auto; image-rendering: auto; object-fit: contain; filter: none !important; -webkit-filter: none !important; z-index: 2 !important; pointer-events: none; opacity: 1; animation: cloudDrift 34s linear infinite, cloudJiggle 2.8s ease-in-out infinite; backface-visibility: visible; }
+  @keyframes cloudJiggle {
+    0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
+    25% { translate: 0 -5px; rotate: -1.2deg; scale: 1.025; }
+    50% { translate: 0 2px; rotate: 1deg; scale: 1.04; }
+    75% { translate: 0 -3px; rotate: -.6deg; scale: 1.015; }
+  }
+  #menu .cloud.c1 { top: 8%; left: -280px; animation-delay: -7s; }
+  #menu .cloud.c2 { top: 27%; left: -340px; width: 180px; opacity: .8; animation-duration: 46s; animation-delay: -25s; }
+  @keyframes cloudDrift { 0% { transform: translateX(0); } 100% { transform: translateX(1500px); } }
+  #menu .tree { z-index: 2 !important; }
+  #menu #leafCv { z-index: 3 !important; }
+  #menu h1, #menu .gemrow, #menu .rbtn { z-index: 4; }
+  #maps > *, #deck > *, #end > * { z-index: 2; }
+  .tree { position: absolute !important; bottom: 0; width: 280px; height: 600px; object-fit: contain; object-position: left bottom; z-index: 1 !important; transform-origin: 50% 100%; pointer-events: none; }
+  .tree.left { left: -20px; animation: swayL 8s ease-in-out infinite; }
+  .tree.right { right: -20px; animation: swayR 8s ease-in-out infinite; }
+  @keyframes swayL { 0%,100% { transform: rotate(-.8deg); } 50% { transform: rotate(.8deg); } }
+  @keyframes swayR { 0%,100% { transform: scaleX(-1) rotate(-.8deg); } 50% { transform: scaleX(-1) rotate(.8deg); } }
+  #leafCv { position: absolute !important; top: 0; left: 0; width: 960px; height: 720px; background: transparent; z-index: 3 !important; pointer-events: none; }
+  .hidden { display: none !important; }
+  h1 { font-size: 40px; margin: 0 0 40px; line-height: 1.5; color: #fff3d6; text-shadow: 4px 4px 0 #3a200c; animation: floaty 5s ease-in-out infinite; }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  h2 { font-size: 22px; color: #fff3d6; text-shadow: 3px 3px 0 #3a200c; margin: 0 0 24px; }
+
+  .rbtn { font-family: inherit; font-size: 20px; color: #fff3d6; cursor: pointer; text-shadow: 3px 3px 0 #3a200c;
+    margin: 12px; padding: 20px 34px; min-width: 340px; border: 6px solid #3a200c; background: #8b5a2b;
+    box-shadow: inset 0 6px 0 #a67440, inset 0 -6px 0 #6b4423; transition: transform .15s, background .15s; }
+  .rbtn:hover { background: #a06a35; transform: scale(1.04); }
+  #menu .rbtn { animation: buttonJiggle 2.4s ease-in-out infinite; }
+  #menu .rbtn:nth-of-type(2) { animation-delay: -.8s; }
+  @keyframes buttonJiggle {
+    0%, 100% { translate: 0 0; rotate: 0deg; }
+    20% { translate: 0 -2px; rotate: -.4deg; }
+    45% { translate: 0 1px; rotate: .35deg; }
+    70% { translate: 0 -1px; rotate: -.2deg; }
+  }
+  .rbtn.small { font-size: 14px; min-width: 200px; padding: 14px 20px; background: #6b4423; }
+  .rbtn.small:hover { background: #805530; }
+  .gemrow { display: flex; align-items: center; gap: 10px; font-size: 16px; color: #fff3d6; text-shadow: 2px 2px 0 #3a200c; margin-bottom: 20px; }
+  .gemico { width: 28px; height: 28px; background-size: contain; background-repeat: no-repeat; background-color: #3cf; display: inline-block; }
+  .card { width: 260px; background: #7a5230; border: 6px solid #3a200c; padding: 14px; margin: 10px; font-size: 11px; line-height: 2; cursor: pointer; text-shadow: 2px 2px 0 #000; }
+  .card:hover { background: #8f6340; transform: scale(1.04); }
+  .card .pic { width: 100%; height: 140px; background-size: cover; background-position: center; border: 4px solid #000; margin-bottom: 10px; background-color: #3d8b37; }
+  .card .ico { width: 80px; height: 80px; margin: 0 auto 8px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .row { display: flex; flex-wrap: wrap; justify-content: center; }
+  #msg { position: absolute; top: 614px; left: 0; width: 960px; text-align: center; font-size: 10px; color: #ff0; pointer-events: none; text-shadow: 2px 2px 0 #000; z-index: 5; }
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="stage">
+
+  <div id="hud">
+    <div>
+      <span>GOLD <b id="money">0</b></span>
+      <span>BASE <b id="base">100</b>%<span id="baseBar"><div id="baseFill"></div></span></span>
+      <span>WAVE <b id="wave">0</b>/<b id="maxwave">0</b></span>
+    </div>
+    <div>
+      <button class="hbtn" id="btnWave">START WAVE</button>
+      <button class="hbtn" id="btnMenu" style="background:#c33">MENU</button>
+    </div>
+  </div>
+
+  <canvas id="game" width="960" height="576"></canvas>
+  <div id="msg"></div>
+  <div id="shop"></div>
+
+  <!-- tower info -->
+  <div id="info" class="hidden">
+    <div id="iName" style="color:#fd0"></div>
+    <div id="iDmg"></div>
+    <div id="iRng"></div>
+    <button class="hbtn" id="btnUp">UPGRADE</button>
+    <button class="hbtn" id="btnClose" style="background:#c33">X</button>
+  </div>
+
+  <!-- MAIN MENU -->
+  <div class="screen" id="menu">
+    <img class="menu-bg" src="images/textures/mainmenu.png" alt="" onerror="this.style.display='none'">
+    <img class="cloud c1" src="images/textures/cloud.png" alt="" onerror="this.style.display='none'">
+    <img class="cloud c2" src="images/textures/cloud.png" alt="" onerror="this.style.display='none'">
+    <img class="tree left" src="images/textures/tree.png" alt="" onerror="this.style.display='none'">
+    <img class="tree right" src="images/textures/tree.png" alt="" onerror="this.style.display='none'">
+    <canvas id="leafCv" width="960" height="720"></canvas>
+    <h1>PEACE<br>IS SOLD</h1>
+    <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
+    <button class="rbtn" id="btnPlay">PLAY</button>
+    <button class="rbtn" id="btnDeck" style="font-size:16px">DECK</button>
+  </div>
+
+  <!-- MAP SELECT -->
+  <div class="screen hidden" id="maps">
+    <h2>SELECT MAP</h2>
+    <div class="row">
+      <div class="card" id="mapGrass">
+        <div class="pic" id="grassPic"></div>
+        GRASSLAND<br><span style="color:#0f0">EASY</span>
+      </div>
+    </div>
+    <button class="rbtn small" id="btnMapBack">BACK</button>
+  </div>
+
+  <!-- DECK -->
+  <div class="screen hidden" id="deck">
+    <h2>DECK</h2>
+    <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
+    <div class="row" id="deckCards"></div>
+    <button class="rbtn small" id="btnDeckBack">BACK</button>
+  </div>
+
+  <!-- END SCREEN -->
+  <div class="screen hidden" id="end">
+    <h1 id="endTitle" style="font-size:30px;margin-bottom:20px">GAME OVER</h1>
+    <div class="gemrow" style="font-size:18px">+<b id="earned">0</b> <span class="gemico gi"></span></div>
+    <button class="rbtn" id="btnAgain">PLAY AGAIN</button>
+    <button class="rbtn" id="btnToMenu">MAIN MENU</button>
+  </div>
+
+</div>
+</div>
+
+<script>
+/* ================== SETTINGS ================== */
+const IMG = {
+  grass:      'images/textures/grass.png',
+  dirt:       'images/textures/dirt.png',
+  gems:       'images/textures/gems.png',
+  leaves:     'images/textures/leaves.png',
+  greenistan: 'images/enemies/greenistan.png',
+  redistan:   'images/enemies/redistan.png',
+  atardeli:   'images/weapons/atardeli.png',
+  knife:      'images/weapons/knife.png',
+  deli:       'images/projectiles/deli.png',
+  delice:     'images/towers/delici.png',
+  dolten:     'images/towers/dolten.png',
+  efe:        'images/towers/efe.png'
+};
+
+// Main-menu music: audios/mainmenu.mp3. Start as early as the browser allows.
+// Browsers block audible autoplay until the visitor has interacted once; after
+// that first gesture, keep the track running across menu/map/deck/end screens.
+const menuMusic = new Audio('audios/mainmenu.mp3');
+menuMusic.loop = true;
+menuMusic.preload = 'auto';
+menuMusic.volume = 0.45;
+let musicWanted = true;
+let gameplayMusicMuted = false;
+function startMenuMusic() {
+  musicWanted = true;
+  gameplayMusicMuted = false;
+  if (menuMusic.paused) {
+    const attempt = menuMusic.play();
+    if (attempt && attempt.catch) attempt.catch(() => {});
+  }
+}
+function stopMenuMusic() {
+  gameplayMusicMuted = true;
+  menuMusic.pause();
+  try { menuMusic.currentTime = 0; } catch (e) {}
+}
+function syncMenuMusic() {
+  if (gameplayMusicMuted || !musicWanted) return;
+  if (menuMusic.paused) {
+    const attempt = menuMusic.play();
+    if (attempt && attempt.catch) attempt.catch(() => {});
+  }
+}
+menuMusic.addEventListener('error', () => console.error('Music failed to load. Check that audios/mainmenu.mp3 exists next to the HTML file.', menuMusic.error));
+menuMusic.addEventListener('canplay', syncMenuMusic);
+// Attempt audible autoplay immediately on page load. Browsers may still block
+// sound until the site has autoplay permission or a prior user interaction.
+startMenuMusic();
+// Retry autoplay as soon as the first real user interaction happens.
+// If the browser allows autoplay, the track starts immediately on page load.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', syncMenuMusic, { once: true });
+} else {
+  syncMenuMusic();
+}
+['pointerdown', 'keydown', 'touchstart'].forEach(eventName => {
+  document.addEventListener(eventName, () => {
+    if (!gameplayMusicMuted) syncMenuMusic();
+  }, { passive: true });
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !gameplayMusicMuted) syncMenuMusic();
+});
+window.addEventListener('pageshow', () => {
+  if (!gameplayMusicMuted) syncMenuMusic();
+});
+
+const TILE = 64, COLS = 15, ROWS = 9;
+const START_MONEY = 120, MAX_WAVE = 10;
+
+/* Towers. placeable:false = only via upgrade. gemCost = must be bought in DECK first. */
+const TOWER_TYPES = [
+  { id: 'delici', name: 'DELICI', cost: 50, range: 170, cooldown: 0.65, damage: 2, bulletSpeed: 520, bulletSize: 12,
+    size: 56, weaponLen: 44, body: 'delice', weapon: 'atardeli', bullet: 'deli', hue: 0, upgrade: 'dolten', upCost: 90, placeable: true },
+  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 210, cooldown: 0.45, damage: 4.5, bulletSpeed: 600, bulletSize: 14,
+    size: 62, weaponLen: 48, body: 'dolten', fb: 'delice', fbHue: 200, weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false },
+  { id: 'efe', name: 'EFE', cost: 70, range: 80, cooldown: 0.4, damage: 3.5, melee: true,
+    size: 58, weaponLen: 34, body: 'efe', fb: 'delice', fbHue: 90, weapon: 'knife', hue: 0, placeable: true, gemCost: 40 }
+];
+
+/* Enemies: dmg = % of base health taken when they reach the base */
+const ENEMY = {
+  greenistan: { hp: 6,  speed: 78,  reward: 7,  size: 48, dmg: 4 },
+  redistan:   { hp: 15, speed: 105, reward: 13, size: 52, dmg: 8 }
+};
+
+let pathTiles = new Set(), pathPts = [];
+
+/* ================== SAVE (gems + deck) ================== */
+let gems = 0, owned = { delici: true };
+try {
+  gems = parseInt(localStorage.getItem('ps_gems'), 10) || 0;
+  owned = Object.assign({ delici: true }, JSON.parse(localStorage.getItem('ps_deck') || '{}'));
+} catch (e) {}
+function save() {
+  try { localStorage.setItem('ps_gems', gems); localStorage.setItem('ps_deck', JSON.stringify(owned)); } catch (e) {}
+  document.querySelectorAll('.gemcount').forEach(el => el.textContent = gems);
+}
+
+/* ================== IMAGES ================== */
+const images = {};
+function setGemIcons() {
+  document.querySelectorAll('.gi').forEach(el => {
+    el.style.backgroundImage = images.gems ? 'url(' + IMG.gems + ')' : 'none';
+    el.style.backgroundColor = images.gems ? 'transparent' : '#3cf';
+  });
+  const gp = document.getElementById('grassPic');
+  gp.style.backgroundImage = images.grass ? 'url(' + IMG.grass + ')' : 'none';
+}
+Object.keys(IMG).forEach(k => {
+  const im = new Image();
+  im.onload = () => { images[k] = im; refreshShop(); setGemIcons(); buildDeck(); };
+  im.onerror = () => { images[k] = null; console.warn('Image not found:', IMG[k]); };
+  im.src = IMG[k];
+});
+const bodyOf = T => images[T.body] ? T.body : (T.fb || T.body);
+const hueOf = T => images[T.body] ? T.hue : (T.fbHue || T.hue);
+
+/* ================== STATE ================== */
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const $ = id => document.getElementById(id);
+let time = 0;
+let enemies, towers, bullets, money, baseHp, wave, spawnQueue, spawnTimer, waveActive, running, last,
+    selected = null, selTower = null, mouse = { x: -1, y: -1 }, earnedGems = 0;
+
+/* ================== RANDOM PATH ================== */
+function genPath() {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const set = new Set();
+    const startY = 1 + Math.floor(Math.random() * (ROWS - 2));
+    let x = 0, y = startY, ok = true;
+    const pts = [[0, y]];
+    set.add('0,' + y);
+    const step = (nx, ny) => {
+      const dx = Math.sign(nx - x), dy = Math.sign(ny - y);
+      while (x !== nx || y !== ny) {
+        const px = x, py = y;
+        x += dx; y += dy;
+        if (set.has(x + ',' + y)) return false;
+        for (const [ax, ay] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const k = (x + ax) + ',' + (y + ay);
+          if (set.has(k) && !(x + ax === px && y + ay === py)) return false;
+        }
+        set.add(x + ',' + y);
+      }
+      pts.push([x, y]);
+      return true;
+    };
+    const segs = 2 + Math.floor(Math.random() * 3); // 2-4 turns before the exit
+    for (let s = 0; s < segs && ok; s++) {
+      // horizontal move
+      let nx;
+      do { nx = 1 + Math.floor(Math.random() * (COLS - 2)); } while (Math.abs(nx - x) < 3);
+      ok = step(nx, y);
+      if (!ok) break;
+      // vertical move
+      let ny, tries = 0;
+      do { ny = Math.floor(Math.random() * ROWS); tries++; } while (Math.abs(ny - y) < 2 && tries < 30);
+      if (Math.abs(ny - y) < 2) { ok = false; break; }
+      ok = step(x, ny);
+    }
+    if (!ok) continue;
+    if (!step(COLS - 1, y)) continue;
+    if (set.size < 28) continue;
+    pathTiles = set;
+    pathPts = pts.map(p => ({ x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2 }));
+    pathPts[0].x = -TILE / 2;
+    pathPts[pathPts.length - 1].x = COLS * TILE + TILE / 2;
+    return;
+  }
+  // fallback path
+  const W = [[0,1],[12,1],[12,4],[2,4],[2,7],[14,7]];
+  pathTiles = new Set(); pathPts = [];
+  W.forEach(([x, y], i) => {
+    pathPts.push({ x: x * TILE + TILE / 2, y: y * TILE + TILE / 2 });
+    if (i > 0) {
+      const [px, py] = W[i - 1];
+      const dx = Math.sign(x - px), dy = Math.sign(y - py);
+      let cx = px, cy = py;
+      while (cx !== x || cy !== y) { pathTiles.add(cx + ',' + cy); cx += dx; cy += dy; }
+    }
+    pathTiles.add(x + ',' + y);
+  });
+  pathPts[0].x = -TILE / 2;
+  pathPts[pathPts.length - 1].x = COLS * TILE + TILE / 2;
+}
+
+/* ================== SHOP ================== */
+const typeOf = id => TOWER_TYPES.find(t => t.id === id);
+const shopList = () => TOWER_TYPES.filter(t => t.placeable && owned[t.id]);
+
+function buildShop() {
+  const shop = $('shop');
+  shop.innerHTML = '';
+  shopList().forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'tbtn';
+    b.dataset.id = t.id;
+    b.innerHTML = '<span class="ico"></span><span>' + t.cost + '</span>';
+    b.onclick = () => selectTower(selected === t.id ? null : t.id);
+    shop.appendChild(b);
+  });
+  refreshShop();
+}
+function refreshShop() {
+  document.querySelectorAll('.tbtn').forEach(b => {
+    const t = typeOf(b.dataset.id);
+    const ico = b.querySelector('.ico');
+    const k = bodyOf(t);
+    ico.style.backgroundImage = images[k] ? 'url(' + IMG[k] + ')' : 'none';
+    ico.style.backgroundColor = images[k] ? 'transparent' : '#9b59b6';
+    const h = hueOf(t);
+    ico.style.filter = h ? 'hue-rotate(' + h + 'deg)' : 'none';
+    b.classList.toggle('sel', selected === t.id);
+    b.classList.toggle('poor', money !== undefined && money < t.cost);
+  });
+}
+function selectTower(id) {
+  selected = id;
+  if (id) { selTower = null; refreshInfo(); }
+  refreshShop();
+  if (id) flash(typeOf(id).name + ' selected - click on grass (right click / ESC = cancel)');
+}
+
+/* ================== INFO PANEL ================== */
+function refreshInfo() {
+  const p = $('info');
+  if (!selTower || !running) { p.classList.add('hidden'); return; }
+  const T = selTower.type;
+  p.classList.remove('hidden');
+  $('iName').textContent = T.name;
+  $('iDmg').textContent = 'DAMAGE: ' + T.damage;
+  $('iRng').textContent = 'RANGE: ' + T.range;
+  const up = $('btnUp');
+  if (T.upgrade) {
+    const U = typeOf(T.upgrade);
+    up.classList.remove('hidden');
+    up.textContent = 'UPGRADE ' + T.upCost + ' G';
+    up.disabled = money < T.upCost;
+    up.title = U.name;
+  } else up.classList.add('hidden');
+}
+$('btnUp').onclick = () => {
+  if (!selTower || !selTower.type.upgrade) return;
+  const T = selTower.type;
+  if (money < T.upCost) return flash('Not enough gold!');
+  money -= T.upCost;
+  selTower.type = typeOf(T.upgrade);
+  selTower.punch = 1;
+  flash(selTower.type.name + '!');
+  hud();
+};
+$('btnClose').onclick = () => { selTower = null; refreshInfo(); };
+
+/* ================== DECK ================== */
+function buildDeck() {
+  const box = $('deckCards');
+  box.innerHTML = '';
+  TOWER_TYPES.filter(t => t.placeable).forEach(t => {
+    const c = document.createElement('div');
+    c.className = 'card';
+    c.style.cursor = 'default';
+    const k = bodyOf(t), h = hueOf(t);
+    const has = !!owned[t.id];
+    c.innerHTML = '<div class="ico" style="' + (images[k] ? 'background-image:url(' + IMG[k] + ');' : 'background-color:#9b59b6;') +
+      (h ? 'filter:hue-rotate(' + h + 'deg);' : '') + '"></div>' + t.name + '<br>' +
+      (has ? '<span style="color:#0f0">OWNED</span>' : '');
+    if (!has) {
+      const b = document.createElement('button');
+      b.className = 'hbtn';
+      b.style.margin = '0';
+      b.innerHTML = 'BUY ' + t.gemCost + ' <span class="gemico gi" style="width:14px;height:14px;vertical-align:middle"></span>';
+      b.disabled = gems < t.gemCost;
+      b.onclick = () => { if (gems >= t.gemCost) { gems -= t.gemCost; owned[t.id] = true; save(); buildDeck(); buildShop(); } };
+      c.appendChild(b);
+    }
+    box.appendChild(c);
+  });
+  setGemIcons();
+}
+
+/* ================== GAME ================== */
+function reset() {
+  genPath();
+  enemies = []; towers = []; bullets = [];
+  money = START_MONEY; baseHp = 100; wave = 0;
+  spawnQueue = []; spawnTimer = 0; waveActive = false; selected = null; selTower = null;
+  buildShop();
+  hud();
+}
+
+function hud() {
+  $('money').textContent = money;
+  const pct = Math.max(0, Math.ceil(baseHp));
+  $('base').textContent = pct;
+  $('baseFill').style.width = pct + '%';
+  $('baseFill').style.background = pct > 50 ? '#0f0' : pct > 25 ? '#fd0' : '#f33';
+  $('wave').textContent = wave;
+  $('maxwave').textContent = MAX_WAVE;
+  $('btnWave').disabled = waveActive || !running;
+  refreshShop();
+  refreshInfo();
+}
+
+function flash(t) {
+  $('msg').textContent = t;
+  clearTimeout(flash.t);
+  flash.t = setTimeout(() => $('msg').textContent = '', 2200);
+}
+
+function bump() {
+  const w = $('wrap');
+  w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump');
+}
+
+/* ================== WAVES ================== */
+function startWave() {
+  if (waveActive || wave >= MAX_WAVE || !running) return;
+  wave++;
+  spawnQueue = [];
+  const n = 7 + wave * 3;
+  const redChance = Math.min(0.15 + wave * 0.07, 0.7);
+  for (let i = 0; i < n; i++) spawnQueue.push(Math.random() < redChance && wave > 1 ? 'redistan' : 'greenistan');
+  spawnTimer = 0;
+  waveActive = true;
+  hud();
+}
+
+function spawnEnemy(type) {
+  const d = ENEMY[type];
+  const hpMul = 1 + (wave - 1) * 0.28;
+  const spMul = 1 + (wave - 1) * 0.03;
+  enemies.push({ type, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
+    hp: d.hp * hpMul, maxHp: d.hp * hpMul, speed: d.speed * spMul, reward: d.reward, size: d.size,
+    dmg: d.dmg, img: type, dir: 1 });
+}
+
+/* ================== INPUT ================== */
+function toCanvas(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
+}
+cv.addEventListener('mousemove', e => { mouse = toCanvas(e); });
+cv.addEventListener('mouseleave', () => { mouse = { x: -1, y: -1 }; });
+cv.addEventListener('contextmenu', e => { e.preventDefault(); if (selected) selectTower(null); selTower = null; refreshInfo(); });
+cv.addEventListener('click', e => {
+  if (!running) return;
+  const p = toCanvas(e);
+  const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+  if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return;
+  const existing = towers.find(t => t.tx === tx && t.ty === ty);
+  if (!selected) {
+    selTower = existing || null;
+    refreshInfo();
+    return;
+  }
+  const type = typeOf(selected);
+  if (pathTiles.has(tx + ',' + ty)) return flash("Can't build on the path!");
+  if (existing) return flash('There is already a tower here!');
+  if (money < type.cost) return flash('Not enough gold!');
+  money -= type.cost;
+  towers.push({ type, tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, cd: 0, aim: 0, punch: 0 });
+  hud();
+});
+addEventListener('keydown', e => {
+  if (!running) return;
+  if (e.key === 'Escape') { selTower = null; refreshInfo(); return selectTower(null); }
+  const list = shopList();
+  const i = parseInt(e.key, 10);
+  if (i >= 1 && i <= list.length) selectTower(selected === list[i - 1].id ? null : list[i - 1].id);
+  if (e.key === ' ') { e.preventDefault(); startWave(); }
+});
+
+const show = id => { ['menu', 'maps', 'deck', 'end'].forEach(s => $(s).classList.toggle('hidden', s !== id)); };
+$('btnPlay').onclick = () => { startMenuMusic(); show('maps'); };
+$('btnMapBack').onclick = () => { show('menu'); startMenuMusic(); };
+$('btnDeck').onclick = () => { startMenuMusic(); buildDeck(); show('deck'); };
+$('btnDeckBack').onclick = () => { show('menu'); startMenuMusic(); };
+$('mapGrass').onclick = startGame;
+$('btnAgain').onclick = startGame;
+$('btnToMenu').onclick = toMenu;
+$('btnMenu').onclick = toMenu;
+$('btnWave').onclick = startWave;
+
+function startGame() {
+  stopMenuMusic();
+  ['menu', 'maps', 'deck', 'end'].forEach(s => $(s).classList.add('hidden'));
+  running = true; reset();
+  flash('Pick a tower from the bottom bar, then click on grass!');
+}
+function toMenu() {
+  running = false;
+  startMenuMusic();
+  selected = null; selTower = null;
+  refreshInfo();
+  show('menu');
+}
+function endGame(win) {
+  running = false;
+  startMenuMusic();
+  earnedGems = Math.floor(wave * 3 + (win ? 25 : 0) + (win ? baseHp / 10 : 0));
+  gems += earnedGems; save();
+  $('earned').textContent = earnedGems;
+  $('endTitle').textContent = win ? 'YOU WIN!' : 'GAME OVER';
+  selTower = null; refreshInfo();
+  show('end');
+}
+
+/* ================== UPDATE ================== */
+function update(dt) {
+  if (waveActive && spawnQueue.length) {
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) { spawnEnemy(spawnQueue.shift()); spawnTimer = Math.max(0.35, 0.85 - wave * 0.05); }
+  }
+
+  for (const e of enemies) {
+    const t = pathPts[e.target];
+    const dx = t.x - e.x, dy = t.y - e.y, dist = Math.hypot(dx, dy);
+    const step = e.speed * dt;
+    e.flip += (e.dir - e.flip) * Math.min(1, dt * 12);
+    if (dist <= step) {
+      e.x = t.x; e.y = t.y; e.target++;
+      if (e.target >= pathPts.length) e.escaped = true;
+    } else {
+      e.x += dx / dist * step; e.y += dy / dist * step;
+      if (Math.abs(dx) > 1) e.dir = dx > 0 ? 1 : -1;
+    }
+  }
+  for (const e of enemies) if (e.escaped) { baseHp -= e.dmg; bump(); hud(); }
+  enemies = enemies.filter(e => !e.escaped);
+
+  for (const t of towers) {
+    const T = t.type;
+    t.cd -= dt;
+    t.punch *= Math.exp(-dt * 10);
+    if (t.punch < 0.01) t.punch = 0;
+    let best = null, bd = T.range;
+    for (const e of enemies) {
+      const d = Math.hypot(e.x - t.x, e.y - t.y);
+      if (d < bd) { bd = d; best = e; }
+    }
+    if (best) {
+      const ang = Math.atan2(best.y - t.y, best.x - t.x);
+      let d = ang - t.aim;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      t.aim += d * Math.min(1, dt * 14);
+      if (t.cd <= 0) {
+        t.cd = T.cooldown;
+        t.punch = 1;
+        if (T.melee) best.hp -= T.damage;
+        else bullets.push({ x: t.x + Math.cos(t.aim) * T.weaponLen, y: t.y + Math.sin(t.aim) * T.weaponLen,
+          target: best, angle: t.aim, type: T });
+      }
+    }
+  }
+
+  for (const b of bullets) {
+    if (!b.target || b.target.hp <= 0 || !enemies.includes(b.target)) { b.dead = true; continue; }
+    const dx = b.target.x - b.x, dy = b.target.y - b.y, dist = Math.hypot(dx, dy);
+    const step = b.type.bulletSpeed * dt;
+    b.angle = Math.atan2(dy, dx);
+    if (dist <= step + b.target.size / 3) { b.target.hp -= b.type.damage; b.dead = true; }
+    else { b.x += dx / dist * step; b.y += dy / dist * step; }
+  }
+  bullets = bullets.filter(b => !b.dead);
+
+  for (const e of enemies) if (e.hp <= 0) { money += e.reward; hud(); }
+  enemies = enemies.filter(e => e.hp > 0);
+
+  if (waveActive && !spawnQueue.length && !enemies.length) {
+    waveActive = false;
+    const bonus = 15 + wave * 3;
+    money += bonus;
+    hud();
+    if (wave >= MAX_WAVE) return endGame(true);
+    flash('Wave ' + wave + ' cleared! +' + bonus + ' gold');
+  }
+  if (baseHp <= 0) endGame(false);
+}
+
+/* ================== RENDER ================== */
+function drawImg(name, x, y, w, h, fallback) {
+  const im = images[name];
+  if (im) ctx.drawImage(im, x, y, w, h);
+  else { ctx.fillStyle = fallback; ctx.fillRect(x, y, w, h); }
+}
+function setHue(h) { ctx.filter = h ? 'hue-rotate(' + h + 'deg)' : 'none'; }
+
+function render() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const isPath = pathTiles.has(x + ',' + y);
+    drawImg(isPath ? 'dirt' : 'grass', x * TILE, y * TILE, TILE, TILE, isPath ? '#8a5a2b' : '#3d8b37');
+  }
+
+  const mtx = Math.floor(mouse.x / TILE), mty = Math.floor(mouse.y / TILE);
+
+  if (running && selected && mouse.x >= 0) {
+    const T = typeOf(selected);
+    const ok = !pathTiles.has(mtx + ',' + mty) && !towers.some(t => t.tx === mtx && t.ty === mty) && money >= T.cost;
+    ctx.fillStyle = ok ? 'rgba(255,255,255,.25)' : 'rgba(255,0,0,.35)';
+    ctx.fillRect(mtx * TILE, mty * TILE, TILE, TILE);
+    ctx.strokeStyle = ok ? 'rgba(255,255,255,.5)' : 'rgba(255,80,80,.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(mtx * TILE + TILE / 2, mty * TILE + TILE / 2, T.range, 0, Math.PI * 2); ctx.stroke();
+  } else if (running && !selected && mouse.x >= 0) {
+    const ht = towers.find(t => t.tx === mtx && t.ty === mty);
+    if (ht) {
+      ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(ht.x, ht.y, ht.type.range, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // selected tower: highlight + range
+  if (running && selTower) {
+    ctx.fillStyle = 'rgba(255,255,0,.2)';
+    ctx.fillRect(selTower.tx * TILE, selTower.ty * TILE, TILE, TILE);
+    ctx.strokeStyle = 'rgba(255,255,0,.8)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(selTower.x, selTower.y, selTower.type.range, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  for (const t of towers) {
+    const T = t.type, s = T.size;
+    const bop = Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.05;
+    const sq = bop + t.punch * 0.12;
+    ctx.save();
+    setHue(hueOf(T));
+    ctx.translate(t.x, t.y + s / 2);
+    ctx.scale(1 - sq, 1 + sq);
+    drawImg(bodyOf(T), -s / 2, -s, s, s, '#9b59b6');
+    ctx.restore();
+    ctx.save();
+    setHue(T.hue);
+    ctx.translate(t.x, t.y + bop * 20);
+    ctx.rotate(t.aim);
+    ctx.translate(T.melee ? t.punch * 16 : -t.punch * 6, 0);
+    if (T.melee) ctx.rotate(-t.punch * 0.9);
+    const w = T.weaponLen + 8, h = 28;
+    if (images[T.weapon]) ctx.drawImage(images[T.weapon], 0, -h / 2, w, h);
+    else { ctx.fillStyle = '#ccc'; ctx.fillRect(0, -4, w, 8); }
+    ctx.restore();
+  }
+
+  let hovered = null, hd = 1e9;
+  for (const e of enemies) {
+    const s = e.size;
+    const air = Math.abs(Math.sin(time * 7 + e.phase));
+    const hop = air * 8;
+    const sq = (0.5 - air) * 0.2;
+    ctx.save();
+    ctx.translate(e.x, e.y + s / 2 - hop);
+    ctx.scale((1 + sq) * e.flip, 1 - sq);
+    drawImg(e.img, -s / 2, -s, s, s, e.type === 'greenistan' ? '#2d2' : '#d33');
+    ctx.restore();
+    if (mouse.x >= 0) {
+      const d = Math.hypot(mouse.x - e.x, mouse.y - e.y);
+      if (d < s / 2 + 6 && d < hd) { hd = d; hovered = e; }
+    }
+  }
+
+  if (hovered && running) {
+    const e = hovered, s = e.size;
+    const bw = 56, bx = e.x - bw / 2, by = e.y - s / 2 - 22;
+    ctx.fillStyle = '#000'; ctx.fillRect(bx - 2, by - 2, bw + 4, 12);
+    ctx.fillStyle = '#400'; ctx.fillRect(bx, by, bw, 8);
+    const pct = Math.max(0, e.hp / e.maxHp);
+    ctx.fillStyle = pct > 0.5 ? '#0f0' : pct > 0.25 ? '#fd0' : '#f33';
+    ctx.fillRect(bx, by, bw * pct, 8);
+    ctx.font = '8px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#000';
+    const txt = Math.ceil(e.hp) + '/' + Math.ceil(e.maxHp);
+    ctx.strokeText(txt, e.x, by - 5);
+    ctx.fillStyle = '#fff'; ctx.fillText(txt, e.x, by - 5);
+    ctx.textAlign = 'left';
+  }
+
+  for (const b of bullets) {
+    const s = b.type.bulletSize;
+    ctx.save();
+    setHue(b.type.hue);
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.angle);
+    drawImg(b.type.bullet, -s / 2, -s / 2, s, s, '#ff0');
+    ctx.restore();
+  }
+  ctx.filter = 'none';
+}
+
+/* ================== FALLING LEAVES (main menu) ================== */
+const lcv = $('leafCv'), lctx = lcv.getContext('2d');
+let leaves = [], leafTimer = 0;
+function newLeaf(y) {
+  return { x: Math.random() * 960, y, vy: 22 + Math.random() * 30, sw: 20 + Math.random() * 40, ph: Math.random() * 6.28,
+    f: 0.4 + Math.random() * 0.8, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 1.4, s: 22 + Math.random() * 18,
+    hue: Math.floor(Math.random() * 50 - 25) };
+}
+for (let i = 0; i < 18; i++) leaves.push(newLeaf(Math.random() * 700));
+function drawLeaves(dt) {
+  leafTimer -= dt;
+  if (leafTimer <= 0 && leaves.length < 40) { leafTimer = 0.3 + Math.random() * 0.5; leaves.push(newLeaf(-40)); }
+  lctx.clearRect(0, 0, 960, 720);
+  for (const l of leaves) {
+    l.y += l.vy * dt; l.rot += l.vr * dt;
+    const px = l.x + Math.sin(time * l.f + l.ph) * l.sw;
+    lctx.save();
+    lctx.translate(px, l.y);
+    lctx.rotate(l.rot + Math.sin(time * l.f + l.ph) * 0.4);
+    if (images.leaves) {
+      lctx.filter = 'hue-rotate(' + l.hue + 'deg)';
+      lctx.drawImage(images.leaves, -l.s / 2, -l.s / 2, l.s, l.s);
+    } else {
+      lctx.fillStyle = '#5a9a3a';
+      lctx.beginPath(); lctx.ellipse(0, 0, l.s / 2, l.s / 4, 0, 0, Math.PI * 2); lctx.fill();
+    }
+    lctx.restore();
+  }
+  lctx.filter = 'none';
+  leaves = leaves.filter(l => l.y < 760);
+}
+
+/* ================== LOOP ================== */
+function loop(ts) {
+  const dt = Math.min((ts - last) / 1000 || 0, 0.05);
+  last = ts;
+  time += dt;
+  if (running) update(dt);
+  render();
+  if (!$('menu').classList.contains('hidden')) drawLeaves(dt);
+  requestAnimationFrame(loop);
+}
+save();
+setGemIcons();
+reset();
+running = false;
+requestAnimationFrame(t => { last = t; loop(t); });
+
+function fit() {
+  const s = Math.min(innerWidth / 960, innerHeight / 720);
+  $('stage').style.transform = 'scale(' + s + ')';
+}
+addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>
