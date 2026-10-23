@@ -327,6 +327,9 @@ const $ = id => document.getElementById(id);
 let time = 0;
 let enemies, towers, bullets, money, baseHp, wave, spawnQueue, spawnTimer, waveActive, running, last,
     selected = null, selTower = null, mouse = { x: -1, y: -1 }, earnedGems = 0, skipReadyNotified = false;
+// Countdown gives a short, clear setup window before every wave.
+let waveCountdownRemaining = 0, waveCountdownLastNumber = 0;
+let hiddenSince = null;
 
 /* ================== RANDOM PATH ================== */
 function genPath() {
@@ -489,7 +492,8 @@ function reset() {
   genPath();
   enemies = []; towers = []; bullets = [];
   money = START_MONEY; baseHp = 100; wave = 0;
-  spawnQueue = []; spawnTimer = 0; waveActive = false; skipReadyNotified = false; selected = null; selTower = null;
+  spawnQueue = []; spawnTimer = 0; waveActive = false; waveCountdownRemaining = 0; waveCountdownLastNumber = 0;
+  skipReadyNotified = false; selected = null; selTower = null;
   buildShop();
   hud();
 }
@@ -507,10 +511,10 @@ function hud() {
   refreshInfo();
 }
 
-function flash(t) {
+function flash(t, duration = 2200) {
   $('msg').textContent = t;
   clearTimeout(flash.t);
-  flash.t = setTimeout(() => $('msg').textContent = '', 2200);
+  flash.t = setTimeout(() => $('msg').textContent = '', duration);
 }
 
 function bump() {
@@ -546,26 +550,47 @@ function syncSkipWaveButton(showNotification = true) {
 
 function skipWave() {
   if (!canSkipWave()) return;
-  const skippedWave = wave;
-  // Ignore this wave's remaining queued spawns; already-spawned mobs stay on the map.
-  // The next wave starts immediately and overlaps remaining enemies.
+  // Skip only the remaining queued spawns. Mobs already on the field stay there.
   spawnQueue = [];
   waveActive = false;
-  startWave('WAVE ' + (skippedWave + 1) + ' STARTED!');
+  startWave(); // the next wave gets the same 3-2-1 placement window
 }
 
-function startWave(startMessage) {
+// The only countdown text shown is 3, 2, 1. No "next wave in" message.
+function startWave() {
+  if (waveActive || waveCountdownRemaining > 0 || wave >= MAX_WAVE || !running) return;
+  waveCountdownRemaining = 3;
+  waveCountdownLastNumber = 3;
+  skipReadyNotified = false;
+  $('btnSkipWave').disabled = true;
+  flash('3', 1100);
+}
+
+function launchWave() {
   if (waveActive || wave >= MAX_WAVE || !running) return;
+  waveCountdownRemaining = 0;
+  waveCountdownLastNumber = 0;
   wave++;
   spawnQueue = [];
   const n = 7 + wave * 3;
   const redChance = Math.min(0.15 + wave * 0.07, 0.7);
   for (let i = 0; i < n; i++) spawnQueue.push(Math.random() < redChance && wave > 1 ? 'redistan' : 'greenistan');
-  spawnTimer = 0;
+  // Don't throw a mob onto the field instantly after the countdown.
+  spawnTimer = Math.max(0.7, 1.05 - wave * 0.035);
   waveActive = true;
   skipReadyNotified = false;
   hud();
-  flash(startMessage || ('WAVE ' + wave + ' STARTED!'));
+}
+
+function updateWaveCountdown(dt) {
+  if (waveCountdownRemaining <= 0 || !running) return;
+  waveCountdownRemaining = Math.max(0, waveCountdownRemaining - dt);
+  const shownNumber = Math.ceil(waveCountdownRemaining - 0.000001);
+  if (shownNumber > 0 && shownNumber < waveCountdownLastNumber) {
+    waveCountdownLastNumber = shownNumber;
+    flash(String(shownNumber), 1100);
+  }
+  if (waveCountdownRemaining <= 0) launchWave();
 }
 
 function spawnEnemy(type) {
@@ -628,10 +653,12 @@ function startGame() {
   stopMenuMusic();
   ['menu', 'maps', 'deck', 'end'].forEach(s => $(s).classList.add('hidden'));
   running = true; reset();
-  startWave('WAVE 1 STARTED!');
+  startWave();
 }
 function toMenu() {
   running = false;
+  waveCountdownRemaining = 0;
+  waveCountdownLastNumber = 0;
   startMenuMusic();
   selected = null; selTower = null;
   refreshInfo();
@@ -639,6 +666,8 @@ function toMenu() {
 }
 function endGame(win) {
   running = false;
+  waveCountdownRemaining = 0;
+  waveCountdownLastNumber = 0;
   startMenuMusic();
   earnedGems = Math.floor(wave * 3 + (win ? 25 : 0) + (win ? baseHp / 10 : 0));
   gems += earnedGems; save();
@@ -650,13 +679,14 @@ function endGame(win) {
 
 /* ================== UPDATE ================== */
 function update(dt) {
+  updateWaveCountdown(dt);
   syncSkipWaveButton(true);
   if (waveActive && spawnQueue.length) {
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
       spawnEnemy(spawnQueue.shift());
-      // Later waves pour out faster, so a skipped wave feels immediate.
-      spawnTimer = Math.max(0.12, 0.30 - wave * 0.018);
+      // Slower, readable spawn spacing; later waves ramp up only moderately.
+      spawnTimer = Math.max(0.7, 1.05 - wave * 0.035);
     }
   }
 
@@ -720,8 +750,8 @@ function update(dt) {
     money += bonus;
     hud();
     if (wave >= MAX_WAVE) return endGame(true);
-    // No next-wave countdown: launch the next wave straight away.
-    startWave('WAVE ' + (wave + 1) + ' STARTED! +' + bonus + ' GOLD');
+    // Automatic next wave, with a 3-2-1 tower placement window.
+    startWave();
   }
   if (baseHp <= 0) endGame(false);
 }
@@ -876,6 +906,28 @@ function loop(ts) {
   if (!$('menu').classList.contains('hidden')) drawLeaves(dt);
   requestAnimationFrame(loop);
 }
+
+// Browsers throttle animation frames in background tabs. Catch up the game
+// simulation when the player returns, so waves, enemies and towers kept running
+// against real elapsed time instead of freezing while another tab was open.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    hiddenSince = performance.now();
+    return;
+  }
+  if (hiddenSince === null) return;
+  let elapsed = Math.max(0, (performance.now() - hiddenSince) / 1000);
+  hiddenSince = null;
+  while (elapsed > 0.000001 && running) {
+    const step = Math.min(0.05, elapsed);
+    time += step;
+    update(step);
+    elapsed -= step;
+  }
+  // Prevent the next animation frame from counting the hidden interval twice.
+  last = performance.now();
+  render();
+});
 save();
 setGemIcons();
 reset();
