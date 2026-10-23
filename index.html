@@ -335,7 +335,7 @@ let enemies, towers, bullets, money, baseHp, wave, waveBatches, running, last,
     selected = null, selTower = null, mouse = { x: -1, y: -1 }, earnedGems = 0;
 // Countdown is shown in its own layer, independent from gameplay notifications.
 let waveCountdownRemaining = 0, waveCountdownLastNumber = 0;
-let hiddenSince = null;
+let hiddenSince = null; // wall-clock timestamp while the document is in the background
 
 /* ================== RANDOM PATH ================== */
 function genPath() {
@@ -949,7 +949,15 @@ function drawLeaves(dt) {
 
 /* ================== LOOP ================== */
 function loop(ts) {
-  const dt = Math.min((ts - last) / 1000 || 0, 0.05);
+  // IMPORTANT: never update gameplay while hidden. Some browsers still deliver
+  // throttled animation frames in background tabs; updating on those frames and
+  // then catching up on visibility return caused the elapsed time to be counted
+  // twice, making waves jump/freeze unexpectedly.
+  if (document.hidden) {
+    requestAnimationFrame(loop);
+    return;
+  }
+  const dt = Math.min(Math.max(0, (ts - last) / 1000 || 0), 0.05);
   last = ts;
   time += dt;
   if (running) update(dt);
@@ -958,26 +966,45 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 
-// Browsers throttle animation frames in background tabs. Catch up the game
-// simulation when the player returns, so waves, enemies and towers kept running
-// against real elapsed time instead of freezing while another tab was open.
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    hiddenSince = performance.now();
+// The canvas cannot animate while a browser suspends a hidden page. Instead,
+// freeze updates while hidden and accurately simulate the elapsed wall-clock time
+// on return. pagehide/pageshow also cover leaving and returning via browser history
+// (including BFCache), where visibilitychange alone is not always sufficient.
+function markBackgroundStart() {
+  if (hiddenSince === null) hiddenSince = Date.now();
+}
+
+function resumeFromBackground() {
+  if (document.hidden || hiddenSince === null) {
+    last = performance.now();
     return;
   }
-  if (hiddenSince === null) return;
-  let elapsed = Math.max(0, (performance.now() - hiddenSince) / 1000);
+  let elapsed = Math.max(0, (Date.now() - hiddenSince) / 1000);
   hiddenSince = null;
+
+  // Small fixed steps keep enemy path movement, tower cooldowns, projectiles,
+  // spawn queues, countdowns and base damage consistent with normal gameplay.
   while (elapsed > 0.000001 && running) {
     const step = Math.min(0.05, elapsed);
     time += step;
     update(step);
     elapsed -= step;
   }
-  // Prevent the next animation frame from counting the hidden interval twice.
+
+  // Do not count the hidden duration a second time on the next animation frame.
   last = performance.now();
   render();
+  if (!$('menu').classList.contains('hidden')) drawLeaves(0);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) markBackgroundStart();
+  else resumeFromBackground();
+});
+window.addEventListener('pagehide', markBackgroundStart);
+window.addEventListener('pageshow', () => {
+  if (document.hidden) markBackgroundStart();
+  else resumeFromBackground();
 });
 save();
 setGemIcons();
