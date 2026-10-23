@@ -89,7 +89,8 @@
   .card .pic { width: 100%; height: 140px; background-size: cover; background-position: center; border: 4px solid #000; margin-bottom: 10px; background-color: #3d8b37; }
   .card .ico { width: 80px; height: 80px; margin: 0 auto 8px; background-size: contain; background-repeat: no-repeat; background-position: center; }
   .row { display: flex; flex-wrap: wrap; justify-content: center; }
-  #msg { position: absolute; top: 614px; left: 0; width: 960px; text-align: center; font-size: 10px; color: #ff0; pointer-events: none; text-shadow: 2px 2px 0 #000; z-index: 5; }
+  #msg { position: absolute; top: 78px; left: 50%; transform: translateX(-50%); width: max-content; max-width: 88%; padding: 12px 16px; background: rgba(27,27,47,.96); border: 4px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,.45); text-align: center; font-size: 10px; line-height: 1.8; color: #ffed55; pointer-events: none; text-shadow: 2px 2px 0 #000; z-index: 20; }
+  #msg:empty { display: none; }
 </style>
 </head>
 <body>
@@ -109,7 +110,7 @@
       <span>WAVE <b id="wave">0</b>/<b id="maxwave">0</b></span>
     </div>
     <div>
-      <button class="hbtn" id="btnWave">START WAVE</button>
+      <button class="hbtn" id="btnSkipWave" disabled>SKIP WAVE</button>
       <button class="hbtn" id="btnMenu" style="background:#c33">MENU</button>
     </div>
   </div>
@@ -266,7 +267,7 @@ nextButton.addEventListener('click', () => {
 });
 
 const TILE = 64, COLS = 15, ROWS = 9;
-const START_MONEY = 120, MAX_WAVE = 10;
+const START_MONEY = 120, MAX_WAVE = 10, AUTO_WAVE_DELAY = 5;
 
 /* Towers. placeable:false = only via upgrade. gemCost = must be bought in DECK first. */
 const TOWER_TYPES = [
@@ -325,7 +326,7 @@ ctx.imageSmoothingEnabled = false;
 const $ = id => document.getElementById(id);
 let time = 0;
 let enemies, towers, bullets, money, baseHp, wave, spawnQueue, spawnTimer, waveActive, running, last,
-    selected = null, selTower = null, mouse = { x: -1, y: -1 }, earnedGems = 0;
+    autoWaveTimer = 0, selected = null, selTower = null, mouse = { x: -1, y: -1 }, earnedGems = 0;
 
 /* ================== RANDOM PATH ================== */
 function genPath() {
@@ -488,7 +489,7 @@ function reset() {
   genPath();
   enemies = []; towers = []; bullets = [];
   money = START_MONEY; baseHp = 100; wave = 0;
-  spawnQueue = []; spawnTimer = 0; waveActive = false; selected = null; selTower = null;
+  spawnQueue = []; spawnTimer = 0; waveActive = false; autoWaveTimer = 0; selected = null; selTower = null;
   buildShop();
   hud();
 }
@@ -501,7 +502,9 @@ function hud() {
   $('baseFill').style.background = pct > 50 ? '#0f0' : pct > 25 ? '#fd0' : '#f33';
   $('wave').textContent = wave;
   $('maxwave').textContent = MAX_WAVE;
-  $('btnWave').disabled = waveActive || !running;
+  const skipButton = $('btnSkipWave');
+  skipButton.disabled = !(running && !waveActive && wave < MAX_WAVE && autoWaveTimer > 0);
+  skipButton.textContent = autoWaveTimer > 0 ? 'SKIP WAVE (' + Math.ceil(autoWaveTimer) + ')' : 'SKIP WAVE';
   refreshShop();
   refreshInfo();
 }
@@ -518,8 +521,22 @@ function bump() {
 }
 
 /* ================== WAVES ================== */
-function startWave() {
+function scheduleNextWave(message) {
+  if (!running || wave >= MAX_WAVE) return;
+  autoWaveTimer = AUTO_WAVE_DELAY;
+  hud();
+  flash(message || ('WAVE ' + (wave + 1) + ' STARTS IN ' + AUTO_WAVE_DELAY + 's — PRESS SKIP WAVE!'));
+}
+
+function skipWave() {
+  if (!running || waveActive || wave >= MAX_WAVE || autoWaveTimer <= 0) return;
+  const next = wave + 1;
+  startWave('SKIPPED WAIT — WAVE ' + next + ' STARTED!');
+}
+
+function startWave(startMessage) {
   if (waveActive || wave >= MAX_WAVE || !running) return;
+  autoWaveTimer = 0;
   wave++;
   spawnQueue = [];
   const n = 7 + wave * 3;
@@ -528,6 +545,7 @@ function startWave() {
   spawnTimer = 0;
   waveActive = true;
   hud();
+  flash(startMessage || ('WAVE ' + wave + ' STARTED!'));
 }
 
 function spawnEnemy(type) {
@@ -572,7 +590,7 @@ addEventListener('keydown', e => {
   const list = shopList();
   const i = parseInt(e.key, 10);
   if (i >= 1 && i <= list.length) selectTower(selected === list[i - 1].id ? null : list[i - 1].id);
-  if (e.key === ' ') { e.preventDefault(); startWave(); }
+  if (e.key === ' ') { e.preventDefault(); skipWave(); }
 });
 
 const show = id => { ['menu', 'maps', 'deck', 'end'].forEach(s => $(s).classList.toggle('hidden', s !== id)); };
@@ -584,16 +602,18 @@ $('mapGrass').onclick = startGame;
 $('btnAgain').onclick = startGame;
 $('btnToMenu').onclick = toMenu;
 $('btnMenu').onclick = toMenu;
-$('btnWave').onclick = startWave;
+$('btnSkipWave').onclick = skipWave;
 
 function startGame() {
   stopMenuMusic();
   ['menu', 'maps', 'deck', 'end'].forEach(s => $(s).classList.add('hidden'));
   running = true; reset();
-  flash('Pick a tower from the bottom bar, then click on grass!');
+  scheduleNextWave('FIRST WAVE IN ' + AUTO_WAVE_DELAY + 's — PRESS SKIP WAVE TO START NOW!');
+  flash('FIRST WAVE IN ' + AUTO_WAVE_DELAY + 's — PRESS SKIP WAVE TO START NOW!');
 }
 function toMenu() {
   running = false;
+  autoWaveTimer = 0;
   startMenuMusic();
   selected = null; selTower = null;
   refreshInfo();
@@ -601,6 +621,7 @@ function toMenu() {
 }
 function endGame(win) {
   running = false;
+  autoWaveTimer = 0;
   startMenuMusic();
   earnedGems = Math.floor(wave * 3 + (win ? 25 : 0) + (win ? baseHp / 10 : 0));
   gems += earnedGems; save();
@@ -612,6 +633,14 @@ function endGame(win) {
 
 /* ================== UPDATE ================== */
 function update(dt) {
+  if (running && !waveActive && autoWaveTimer > 0 && wave < MAX_WAVE) {
+    const oldSeconds = Math.ceil(autoWaveTimer);
+    autoWaveTimer = Math.max(0, autoWaveTimer - dt);
+    const seconds = Math.ceil(autoWaveTimer);
+    $('btnSkipWave').textContent = autoWaveTimer > 0 ? 'SKIP WAVE (' + seconds + ')' : 'SKIP WAVE';
+    if (seconds !== oldSeconds && seconds > 0) flash('NEXT WAVE IN ' + seconds + 's — PRESS SKIP WAVE!');
+    if (autoWaveTimer <= 0) startWave();
+  }
   if (waveActive && spawnQueue.length) {
     spawnTimer -= dt;
     if (spawnTimer <= 0) { spawnEnemy(spawnQueue.shift()); spawnTimer = Math.max(0.35, 0.85 - wave * 0.05); }
@@ -677,7 +706,7 @@ function update(dt) {
     money += bonus;
     hud();
     if (wave >= MAX_WAVE) return endGame(true);
-    flash('Wave ' + wave + ' cleared! +' + bonus + ' gold');
+    scheduleNextWave('WAVE ' + wave + ' CLEARED! +' + bonus + ' GOLD — NEXT WAVE AUTO-STARTS IN ' + AUTO_WAVE_DELAY + 's');
   }
   if (baseHp <= 0) endGame(false);
 }
