@@ -185,7 +185,7 @@ const IMG = {
   knife:      'images/weapons/knife.png',
   deli:       'images/projectiles/deli.png',
   delice:     'images/towers/delici.png',
-  dolten:     'images/towers/dolten.png',
+  dolten:     'images/towers/dolten.png', // DOLTEN uses its original, untinted sprite
   efe:        'images/towers/efe.png'
 };
 
@@ -273,7 +273,7 @@ const TOWER_TYPES = [
   { id: 'delici', name: 'DELICI', cost: 50, range: 170, cooldown: 0.65, damage: 2, bulletSpeed: 520, bulletSize: 12,
     size: 56, weaponLen: 44, body: 'delice', weapon: 'atardeli', bullet: 'deli', hue: 0, upgrade: 'dolten', upCost: 90, placeable: true },
   { id: 'dolten', name: 'DOLTEN', cost: 0, range: 210, cooldown: 0.45, damage: 4.5, bulletSpeed: 600, bulletSize: 14,
-    size: 62, weaponLen: 48, body: 'dolten', fb: 'delice', fbHue: 200, weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false },
+    size: 62, weaponLen: 48, body: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false },
   { id: 'efe', name: 'EFE', cost: 70, range: 80, cooldown: 0.4, damage: 3.5, melee: true,
     size: 58, weaponLen: 34, body: 'efe', fb: 'delice', fbHue: 90, weapon: 'knife', hue: 0, placeable: true, gemCost: 40 }
 ];
@@ -313,8 +313,10 @@ Object.keys(IMG).forEach(k => {
   im.onerror = () => { images[k] = null; console.warn('Image not found:', IMG[k]); };
   im.src = IMG[k];
 });
-const bodyOf = T => images[T.body] ? T.body : (T.fb || T.body);
-const hueOf = T => images[T.body] ? T.hue : (T.fbHue || T.hue);
+// DOLTEN must always use its own dolten.png sprite, with no recoloring or
+// fallback to the DELICI sprite while dolten.png is loading/missing.
+const bodyOf = T => T.id === 'dolten' ? 'dolten' : (images[T.body] ? T.body : (T.fb || T.body));
+const hueOf = T => T.id === 'dolten' ? 0 : (images[T.body] ? T.hue : (T.fbHue || T.hue));
 
 /* ================== STATE ================== */
 const cv = document.getElementById('game');
