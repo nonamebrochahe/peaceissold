@@ -18,32 +18,33 @@
   }
   #stage { position: relative; width: 960px; height: 720px; transform-origin: center center; flex: none; }
   canvas { position: absolute; top: 64px; left: 0; width: 960px; height: 576px; background: #2a2a2a; image-rendering: pixelated; }
-  #hud { position: absolute; top: 0; left: 0; width: 960px; height: 64px; background: #1b1b2f;
-    display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; border-bottom: 4px solid #444; }
+  #hud { position: absolute; top: 0; left: 0; width: 960px; height: 64px; background: #3b281d;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; border-bottom: 4px solid #704b31; }
   #hud span { margin-right: 14px; }
+  #hud { box-shadow: inset 0 3px 0 rgba(255,220,170,.08); }
   #baseBar { display: inline-block; width: 90px; height: 14px; background: #400; border: 3px solid #000; vertical-align: middle; margin-left: 6px; }
   #baseFill { height: 100%; width: 100%; background: #0f0; }
   .hbtn { font-family: inherit; font-size: 12px; padding: 10px 12px; background: #3a7; color: #fff; border: 4px solid #000; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; cursor: pointer; margin-left: 6px; }
-  .hbtn:disabled { background: #555; cursor: not-allowed; }
+  .hbtn:disabled { background: #684a34; cursor: not-allowed; }
 
   /* BOTTOM SHOP: small square buttons, price only */
-  #shop { position: absolute; top: 640px; left: 0; width: 960px; height: 80px; background: #1b1b2f;
-    border-top: 4px solid #444; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  #shop { position: absolute; top: 640px; left: 0; width: 960px; height: 80px; background: #3b281d;
+    border-top: 4px solid #704b31; box-shadow: inset 0 3px 0 rgba(255,220,170,.06); display: flex; align-items: center; justify-content: center; gap: 12px; }
   .tbtn { position: relative; width: 66px; height: 66px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-    background: #2e2e4d; border: 4px solid #000; color: #fd0; font-family: inherit; font-size: 10px; cursor: pointer; text-shadow: 2px 2px 0 #000; }
-  .tbtn:hover { background: #3d3d66; }
+    background: #69472d; border: 4px solid #000; color: #fd0; font-family: inherit; font-size: 10px; cursor: pointer; text-shadow: 2px 2px 0 #000; }
+  .tbtn:hover { background: #805a39; }
   .tbtn.sel { background: #3a7; outline: 4px solid #ff0; }
   .tbtn.poor { opacity: .45; }
   .tbtn .ico { width: 36px; height: 36px; background-size: contain; background-repeat: no-repeat; background-position: center; }
 
-  #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(15,15,35,.92); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
+  #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(61,40,25,.94); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
   #info .hbtn { margin: 6px 6px 0 0; font-size: 9px; padding: 8px; }
 
   .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: linear-gradient(180deg, #bfe3c0 0%, #8fc68f 55%, #5f9a62 100%); z-index: 10; text-align: center; padding: 20px; overflow: hidden; }
   .screen > * { position: relative; z-index: 2; }
   /* Shared scenic background for the menu, map select, deck and end screens. */
-  #menu, #maps, #deck, #end { background: #18251b; isolation: isolate; }
+  #menu, #maps, #deck, #end { background: #4b301d; isolation: isolate; }
   #menu .menu-bg { position: absolute !important; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0 !important; pointer-events: none; }
   #maps::before, #deck::before, #end::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: url('images/textures/mainmenu.png') center / cover no-repeat; }
   #menu::after, #maps::after, #deck::after, #end::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.48)); }
@@ -62,12 +63,12 @@
   @keyframes swayR { 0%,100% { transform: scaleX(-1) rotate(-.8deg); } 50% { transform: scaleX(-1) rotate(.8deg); } }
   #leafCv { position: absolute !important; top: 0; left: 0; width: 960px; height: 720px; background: transparent; z-index: 3 !important; pointer-events: none; }
   /* First-load screen: the NEXT click also unlocks browser audio playback. */
-  #loadingScreen { position:absolute; inset:0; z-index:1000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; overflow:hidden; background:#18251b url('images/textures/mainmenu.png') center/cover no-repeat; text-align:center; }
+  #loadingScreen { position:absolute; inset:0; z-index:1000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; overflow:hidden; background:#4b301d url('images/textures/mainmenu.png') center/cover no-repeat; text-align:center; }
   #loadingScreen::before { content:""; position:absolute; inset:0; background:rgba(0,0,0,.42); pointer-events:none; }
   #loadingScreen > * { position:relative; z-index:1; }
   #loadingTitle { margin:0; font-size:28px; line-height:1.7; color:#fff3d6; text-shadow:4px 4px 0 #3a200c; animation:none; }
   #loadingStatus { font-size:10px; line-height:2; color:#fff3d6; text-shadow:2px 2px #000; }
-  #loadingTrack { width:min(440px,80%); height:22px; border:4px solid #3a200c; background:#172016; padding:2px; }
+  #loadingTrack { width:min(440px,80%); height:22px; border:4px solid #3a200c; background:#2c1d13; padding:2px; }
   #loadingFill { height:100%; width:0%; background:#8bca68; transition:width .25s ease; }
   #nextButton { display:none; min-width:240px; margin:0; font-size:18px; padding:18px 28px; }
   #nextButton.ready { display:block; }
@@ -89,7 +90,7 @@
   .card .pic { width: 100%; height: 140px; background-size: cover; background-position: center; border: 4px solid #000; margin-bottom: 10px; background-color: #3d8b37; }
   .card .ico { width: 80px; height: 80px; margin: 0 auto 8px; background-size: contain; background-repeat: no-repeat; background-position: center; }
   .row { display: flex; flex-wrap: wrap; justify-content: center; }
-  #msg { position: absolute; top: 78px; left: 50%; transform: translateX(-50%); width: max-content; max-width: 88%; padding: 12px 16px; background: rgba(27,27,47,.96); border: 4px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,.45); text-align: center; font-size: 10px; line-height: 1.8; color: #ffed55; pointer-events: none; text-shadow: 2px 2px 0 #000; z-index: 20; }
+  #msg { position: absolute; top: 78px; left: 50%; transform: translateX(-50%); width: max-content; max-width: 88%; padding: 12px 16px; background: rgba(61,40,25,.97); border: 4px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,.45); text-align: center; font-size: 10px; line-height: 1.8; color: #ffed55; pointer-events: none; text-shadow: 2px 2px 0 #000; z-index: 20; }
   #msg:empty { display: none; }
   #waveCountdown { position:absolute; top:64px; left:0; width:960px; height:576px; display:none; align-items:center; justify-content:center; z-index:15; pointer-events:none; font-size:104px; line-height:1; color:#fff3d6; -webkit-text-stroke:4px #24180d; text-shadow:8px 8px 0 #24180d, 0 0 26px rgba(255,235,155,.45); }
   #waveCountdown.show { display:flex; animation:countdownPop .22s ease-out both; }
