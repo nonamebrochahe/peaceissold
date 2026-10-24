@@ -1177,14 +1177,13 @@ function render() {
     const musicPulse = isDogoda ? dogodaMotionPulse() : 0;
     const rhythmTime = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
     const beatPhase = rhythmTime * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
-    const rhythmicBop = isDogoda ? Math.sin(beatPhase) * 0.095 : 0;
-    const bop = isDogoda ? rhythmicBop : Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.035;
-    // DOGODA pulses dramatically to the beat, but stays locked in place (no shake).
+    const rhythmicBop = 0;
+    const bop = isDogoda ? 0 : Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.035;
+    // DOGODA stretches from its original size and always eases back; no position shake.
     const bodyPulse = isDogoda ? Math.min(1, Math.max(0, musicPulse)) : 0;
-    const bodyBeat = Math.max(0, Math.sin(beatPhase));
-    const bodyScaleX = isDogoda ? 1 + bodyPulse * 0.16 + bodyBeat * 0.08 : 1;
-    // Stretch DOGODA vertically upward from its planted base, not sideways.
-    const bodyScaleY = isDogoda ? 1 + bodyPulse * 0.78 + bodyBeat * 0.34 : 1;
+    const bodyBeat = Math.pow(Math.max(0, Math.cos(beatPhase)), 18);
+    const bodyScaleX = isDogoda ? 1 + bodyPulse * 0.06 : 1;
+    const bodyScaleY = isDogoda ? 1 + bodyPulse * 0.72 + bodyBeat * 0.42 : 1;
     const sq = isDogoda ? 0 : bop + t.punch * 0.12;
     const shakeX = 0;
     const shakeY = 0;
@@ -1199,15 +1198,12 @@ function render() {
     // DOGODA props: the amp stays planted; the guitar is rotated sideways.
     if (isDogoda) {
       const phase = beatPhase;
-      const propBounce = isDogoda ? Math.sin(phase) * 1.4 : 0;
       const ampVolume = Math.max(0, Math.min(1,
-        !dogodaMusic.paused && dogodaAnalyser
-          ? Math.max(dogodaVolumeLevel, dogodaBeatPulse * 0.28)
-          : bodyPulse * 0.52));
-      // Stretch the amplifier PNG itself according to music volume; never shake it.
-      const beatKick = Math.max(0, Math.sin(phase));
-      const ampStretchX = 1.0 + ampVolume * 0.10;
-      const ampStretchY = 1.0 + ampVolume * 1.18 + beatKick * 0.48;
+        !dogodaMusic.paused && dogodaAnalyser ? dogodaVolumeLevel : bodyPulse * 0.35));
+      // A temporary beat envelope adds a tall pop, then rapidly returns to native PNG size.
+      const beatKick = Math.pow(Math.max(0, Math.cos(phase)), 18);
+      const ampStretchX = 1.0;
+      const ampStretchY = 1.0 + ampVolume * 0.85 + beatKick * 0.58;
       ctx.save();
       ctx.filter = 'none';
       // Anchor the amplifier at its bottom so its PNG grows upward with the music.
@@ -1229,7 +1225,7 @@ function render() {
 
     ctx.save();
     setHue(T.id === 'dogoda' ? 0 : T.hue);
-    ctx.translate(t.x + shakeX, t.y + bop * 20 + shakeY);
+    ctx.translate(t.x + shakeX, t.y + (isDogoda ? 0 : bop * 20) + shakeY);
     ctx.rotate(t.aim);
     ctx.translate(T.melee ? t.punch * 16 : -t.punch * 6, 0);
     if (T.melee) ctx.rotate(-t.punch * 0.9);
