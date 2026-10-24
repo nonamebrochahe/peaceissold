@@ -41,12 +41,12 @@
   .dogoda-mini .mini-body { width:27px; height:27px; left:5px; top:0; z-index:1; }
   .dogoda-mini .mini-amp { width:22px; height:21px; left:-7px; bottom:-2px; z-index:2; }
   /* Guitar is held across DOGODA's body, not a tiny prop floating beside it. */
-  .dogoda-mini .mini-guitar { width:27px; height:17px; left:13px; top:7px; right:auto; bottom:auto; z-index:3; transform:rotate(-12deg); transform-origin:center; }
+  .dogoda-mini .mini-guitar { width:27px; height:17px; left:13px; top:7px; right:auto; bottom:auto; z-index:3; transform:rotate(-28deg); transform-origin:center; }
   .dogoda-shop-preview { position:relative; background:none !important; filter:none !important; }
   .dogoda-shop-preview img { position:absolute; object-fit:contain; image-rendering:pixelated; filter:none !important; -webkit-filter:none !important; }
   .dogoda-shop-preview .preview-body { width:65px; height:65px; left:8px; top:0; z-index:1; }
   .dogoda-shop-preview .preview-amp { width:44px; height:41px; left:-9px; bottom:-4px; z-index:2; }
-  .dogoda-shop-preview .preview-guitar { width:60px; height:38px; left:22px; top:18px; right:auto; bottom:auto; z-index:3; transform:rotate(-12deg); transform-origin:center; }
+  .dogoda-shop-preview .preview-guitar { width:60px; height:38px; left:22px; top:18px; right:auto; bottom:auto; z-index:3; transform:rotate(-28deg); transform-origin:center; }
 
   #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(61,40,25,.94); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
   #info .hbtn { margin: 6px 6px 0 0; font-size: 9px; padding: 8px; }
@@ -168,10 +168,18 @@
   <!-- MAP SELECT -->
   <div class="screen hidden" id="maps">
     <h2>SELECT MAP</h2>
-    <div class="row">
-      <div class="card" id="mapGrass">
+    <div class="row" style="flex-wrap:wrap;gap:14px">
+      <div class="card" id="grassEasy" role="button" tabindex="0">
         <div class="pic" id="grassPic"></div>
         GRASSLAND<br><span style="color:#0f0">EASY</span>
+      </div>
+      <div class="card" id="grassMedium" role="button" tabindex="0">
+        <div class="pic" id="grassPicMedium"></div>
+        GRASSLAND<br><span style="color:#ffb000">MEDIUM</span>
+      </div>
+      <div class="card" id="grassHard" role="button" tabindex="0">
+        <div class="pic" id="grassPicHard"></div>
+        GRASSLAND<br><span style="color:#f44">HARD</span>
       </div>
     </div>
     <button class="rbtn small" id="btnMapBack">BACK</button>
@@ -221,7 +229,8 @@ const IMG = {
   efe:        'images/towers/efe.png',
   dogoda:     'images/towers/dogoda.png',
   guitar:     'images/projectiles/guitar.png',
-  ampProjectile: 'images/projectiles/amp.png'
+  ampProjectile: 'images/projectiles/amp.png',
+  boss: 'images/enemies/boss.png'
 };
 
 // Main-menu music. It is intentionally NOT started on page load: the
@@ -505,7 +514,14 @@ nextButton.addEventListener('click', () => {
 });
 
 const TILE = 64, COLS = 15, ROWS = 9;
-const START_MONEY = 120, MAX_WAVE = 10;
+const START_MONEY = 120;
+let MAX_WAVE = 10;
+let selectedDifficulty = 'easy';
+const DIFFICULTIES = {
+  easy:   { label: 'EASY', hp: 1, speed: 1, mobs: 1, boss: 1 },
+  medium: { label: 'MEDIUM', hp: 1.65, speed: 1.12, mobs: 1.25, boss: 1.8 },
+  hard:   { label: 'HARD', hp: 2.5, speed: 1.25, mobs: 1.55, boss: 2.8 }
+};
 
 /* Tower shop: gemCost unlocks a tower permanently; cost is the in-game gold placement price. */
 const TOWER_TYPES = [
@@ -550,8 +566,10 @@ function setGemIcons() {
     el.style.backgroundImage = images.gems ? 'url(' + IMG.gems + ')' : 'none';
     el.style.backgroundColor = images.gems ? 'transparent' : '#3cf';
   });
-  const gp = document.getElementById('grassPic');
-  gp.style.backgroundImage = images.grass ? 'url(' + IMG.grass + ')' : 'none';
+  ['grassPic', 'grassPicMedium', 'grassPicHard'].forEach(id => {
+    const gp = document.getElementById(id);
+    if (gp) gp.style.backgroundImage = images.grass ? 'url(' + IMG.grass + ')' : 'none';
+  });
 }
 Object.keys(IMG).forEach(k => {
   const im = new Image();
@@ -894,9 +912,12 @@ function launchWave() {
   setWaveCountdown('');
   wave++;
   const queue = [];
-  const n = 7 + wave * 3;
-  const redChance = Math.min(0.15 + wave * 0.07, 0.7);
+  const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
+  const n = Math.ceil((7 + wave * 3) * difficulty.mobs);
+  const redChance = Math.min(0.15 + wave * 0.07 + (selectedDifficulty === 'hard' ? 0.12 : selectedDifficulty === 'medium' ? 0.05 : 0), 0.88);
   for (let i = 0; i < n; i++) queue.push(Math.random() < redChance && wave > 1 ? 'redistan' : 'greenistan');
+  // A boss appears in every wave; each later wave makes it tougher.
+  queue.push('boss');
   waveBatches.push({
     id: wave,
     queue,
@@ -919,12 +940,19 @@ function updateWaveCountdown(dt) {
 }
 
 function spawnEnemy(type, waveId) {
-  const d = ENEMY[type];
-  const hpMul = 1 + (waveId - 1) * 0.28;
-  const spMul = 1 + (waveId - 1) * 0.03;
-  enemies.push({ type, waveId, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
-    hp: d.hp * hpMul, maxHp: d.hp * hpMul, speed: d.speed * spMul, reward: d.reward, size: d.size,
-    dmg: d.dmg, img: type, dir: 1 });
+  const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
+  const isBoss = type === 'boss';
+  const d = isBoss
+    ? { hp: 150, speed: 31, reward: 75 + waveId * 12, size: 112, dmg: 18 }
+    : ENEMY[type];
+  const waveHpMul = 1 + (waveId - 1) * (isBoss ? 0.62 : 0.28);
+  const spMul = 1 + (waveId - 1) * (isBoss ? 0.012 : 0.03);
+  const difficultyHp = isBoss ? difficulty.boss : difficulty.hp;
+  const hp = d.hp * waveHpMul * difficultyHp;
+  enemies.push({ type, waveId, isBoss, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
+    hp, maxHp: hp, speed: d.speed * spMul * difficulty.speed, reward: d.reward, size: d.size,
+    dmg: d.dmg * (isBoss ? (1 + (waveId - 1) * 0.08) : 1), img: isBoss ? 'boss' : type, dir: 1,
+    attackTimer: isBoss ? 2.8 : 0, attackCooldown: isBoss ? 5.5 : 0 });
 }
 
 /* ================== INPUT ================== */
@@ -972,7 +1000,10 @@ $('btnInventory').onclick = () => { startMenuMusic(); buildInventory(); show('in
 $('btnInventoryBack').onclick = () => { show('menu'); startMenuMusic(); };
 $('btnShopMenu').onclick = () => { startMenuMusic(); buildTowerShop(); show('shopScreen'); };
 $('btnShopBack').onclick = () => { show('menu'); startMenuMusic(); };
-$('mapGrass').onclick = startGame;
+$('grassEasy').onclick = () => { selectedDifficulty = 'easy'; startGame(); };
+$('grassMedium').onclick = () => { selectedDifficulty = 'medium'; startGame(); };
+$('grassHard').onclick = () => { selectedDifficulty = 'hard'; startGame(); };
+['grassEasy', 'grassMedium', 'grassHard'].forEach(id => { const el = $(id); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }); });
 $('btnAgain').onclick = startGame;
 $('btnToMenu').onclick = toMenu;
 $('btnMenu').onclick = toMenu;
@@ -1045,6 +1076,27 @@ function update(dt) {
   for (const e of enemies) if (e.escaped) { baseHp -= e.dmg; bump(); hud(); }
   enemies = enemies.filter(e => !e.escaped);
 
+  // Boss ground-slam: nearby towers temporarily shut down, turn grey, then recover.
+  for (const t of towers) t.disabledTimer = Math.max(0, (t.disabledTimer || 0) - dt);
+  for (const boss of enemies) {
+    if (!boss.isBoss || boss.hp <= 0) continue;
+    boss.attackTimer -= dt;
+    if (boss.attackTimer <= 0) {
+      boss.attackTimer = boss.attackCooldown;
+      const radius = selectedDifficulty === 'hard' ? 178 : selectedDifficulty === 'medium' ? 154 : 135;
+      let disabledCount = 0;
+      for (const tower of towers) {
+        if (Math.hypot(tower.x - boss.x, tower.y - boss.y) <= radius) {
+          tower.disabledTimer = Math.max(tower.disabledTimer || 0, selectedDifficulty === 'hard' ? 3.8 : selectedDifficulty === 'medium' ? 3.2 : 2.6);
+          disabledCount++;
+        }
+      }
+      boss.slamFlash = 0.75;
+      if (disabledCount) flash('BOSS SLAM! ' + disabledCount + ' TOWER' + (disabledCount === 1 ? '' : 'S') + ' DISABLED!');
+    }
+    boss.slamFlash = Math.max(0, (boss.slamFlash || 0) - dt);
+  }
+
   // DOGODA boosts attack speed and projectile/melee damage of ordinary towers in its aura.
   for (const t of towers) {
     const aura = !t.type.support ? towers.find(s => s.type.support && Math.hypot(s.x - t.x, s.y - t.y) <= s.type.supportRange) : null;
@@ -1056,6 +1108,7 @@ function update(dt) {
     const T = t.type;
     t.punch *= Math.exp(-dt * 10);
     if (t.punch < 0.01) t.punch = 0;
+    if ((t.disabledTimer || 0) > 0) { t.punch = 0; continue; }
     // Support-only towers such as DOGODA never target enemies or create bullets.
     if (T.support) { t.aim = 0; t.cd = 0; continue; }
     t.cd -= dt;
@@ -1173,75 +1226,66 @@ function render() {
 
   for (const t of towers) {
     const T = t.type, s = T.size;
-    const isDogoda = T.id === 'dogoda';
-    const musicPulse = isDogoda ? dogodaMotionPulse() : 0;
+    const musicPulse = T.id === 'dogoda' ? dogodaMotionPulse() : 0;
     const rhythmTime = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
-    const beatPhase = rhythmTime * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
-    const rhythmicBop = 0;
-    const bop = isDogoda ? 0 : Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.035;
-    // DOGODA: subtle stretch, with energetic music-driven riff shake instead.
-    const bodyPulse = isDogoda ? Math.min(1, Math.max(0, musicPulse)) : 0;
-    const bodyBeat = Math.pow(Math.max(0, Math.cos(beatPhase)), 18);
-    const riffEnergy = isDogoda ? Math.min(1, bodyPulse * 0.8 + bodyBeat * 0.35) : 0;
-    const bodyScaleX = isDogoda ? 1 + bodyPulse * 0.025 : 1;
-    const bodyScaleY = isDogoda ? 1 + bodyPulse * 0.10 + bodyBeat * 0.035 : 1;
-    const sq = isDogoda ? 0 : bop + t.punch * 0.12;
-    // Small local movement only: no camera/screen shake. Louder riffs shake harder.
-    const shakeX = isDogoda ? Math.sin(time * 31 + beatPhase * 2.1) * (1.5 + riffEnergy * 4.0) : 0;
-    const shakeY = isDogoda ? Math.sin(time * 39 + beatPhase * 1.3) * (0.8 + riffEnergy * 2.0) : 0;
+    const rhythmicBop = T.id === 'dogoda' ? Math.sin(rhythmTime * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2) * 0.025 : 0;
+    const bop = Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.05 + rhythmicBop;
+    const sq = bop + t.punch * 0.12 + musicPulse * (T.id === 'dogoda' ? 0.05 : 0);
+    const shakeX = T.id === 'dogoda' ? Math.sin(time * 47 + t.tx * 2.1) * musicPulse * 5 : 0;
+    const shakeY = T.id === 'dogoda' ? -musicPulse * 7 : 0;
     ctx.save();
-    setHue(hueOf(T));
+    setHue((t.disabledTimer || 0) > 0 ? 0 : hueOf(T));
+    if ((t.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
     ctx.translate(t.x + shakeX, t.y + s / 2 + shakeY);
-    // Keep the body mostly its natural size; music is expressed through a local riff shake.
-    if (isDogoda) ctx.rotate(Math.sin(time * 28 + beatPhase) * (0.012 + riffEnergy * 0.025));
-    ctx.scale(bodyScaleX * (1 - sq), bodyScaleY * (1 + sq));
+    if (T.id === 'dogoda') ctx.rotate(Math.sin(time * 43 + t.ty) * musicPulse * 0.045);
+    ctx.scale(1 - sq + musicPulse * (T.id === 'dogoda' ? 0.055 : 0), 1 + sq + musicPulse * (T.id === 'dogoda' ? 0.075 : 0));
     drawImg(bodyOf(T), -s / 2, -s, s, s, '#9b59b6');
+    if ((t.disabledTimer || 0) > 0) {
+      ctx.filter = 'none';
+      ctx.fillStyle = 'rgba(180,190,200,.42)';
+      ctx.fillRect(-s / 2, -s, s, s);
+    }
     ctx.restore();
 
-    // DOGODA props: tiny upward stretch plus lively local shaking on riffs.
-    if (isDogoda) {
-      const phase = beatPhase;
-      const ampVolume = Math.max(0, Math.min(1,
-        !dogodaMusic.paused && dogodaAnalyser ? dogodaVolumeLevel : bodyPulse * 0.35));
-      // The amp reacts independently to drum hits: strong, heavy cabinet wobble,
-      // while its PNG stays close to its natural size (no giant permanent stretch).
-      // dogodaBeatPulse is driven by detected bass/kick transients when audio analysis works.
-      const metronomeKick = Math.pow(Math.max(0, Math.cos(phase)), 22);
-      const audioKick = Math.max(0, Math.min(1, dogodaBeatPulse * 1.7));
-      const beatKick = Math.max(metronomeKick * 0.20, audioKick);
-      const ampRiff = Math.max(0, Math.min(1, ampVolume * 0.65 + beatKick * 0.75));
-      const ampShakeX = Math.sin(time * 18 + phase * 1.15) * (1.8 + ampRiff * 7.5)
-                      + Math.sin(time * 31 + phase * 2.0) * (ampRiff * 2.0);
-      const ampShakeY = Math.abs(Math.sin(time * 15 + phase * 0.9)) * (1.0 + ampRiff * 5.5);
-      const ampTilt = Math.sin(time * 17 + phase) * (0.012 + ampRiff * 0.055);
-      const ampStretchX = 1.0;
-      const ampStretchY = 1.0 + ampVolume * 0.025 + beatKick * 0.025;
+    // DOGODA keeps its character sprite, with the guitar and amplifier beside it.
+    // These are decorative props (not projectiles): both shake/bounce to the song.
+    if (T.id === 'dogoda') {
+      const beat = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
+      const phase = beat * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
+      const propShake = Math.sin(phase * 0.5) * (2 + musicPulse * 4);
+      const propBounce = -musicPulse * 4 + Math.sin(phase) * 1.5;
+      // AMP sits on the ground farther to DOGODA's left. It grows, jitters and
+      // stretches using the actual song volume rather than a decorative circle.
+      const ampVolume = !dogodaMusic.paused && dogodaAnalyser
+        ? Math.max(dogodaVolumeLevel, dogodaBeatPulse * 0.28)
+        : musicPulse * 0.52;
+      const ampShakeX = Math.sin(time * 36 + t.tx) * (ampVolume * 4.8);
+      const ampShakeY = Math.sin(time * 47 + t.ty) * (ampVolume * 3.4) - musicPulse * 2.0;
+      const ampStretchX = 1.0 + ampVolume * 0.32;
+      const ampStretchY = 1.0 + ampVolume * 0.24 + dogodaBeatPulse * 0.10;
       ctx.save();
-      ctx.filter = 'none';
-      // Shift cabinet toward DOGODA; pivot near its bottom so it wobbles like a heavy amp.
-      ctx.translate(t.x - s * 0.99 + ampShakeX,
-                    t.y + s * 0.48 + ampShakeY);
-      ctx.rotate(ampTilt);
+      ctx.filter = (t.disabledTimer || 0) > 0 ? 'grayscale(1) brightness(.72)' : 'none';
+      ctx.translate(t.x - s * 0.96 - propShake + ampShakeX,
+                    t.y + s * 0.08 + shakeY + ampShakeY + propBounce * 0.35);
+      ctx.rotate(Math.sin(phase * 0.7 + time * 2) * ampVolume * 0.10);
       ctx.scale(ampStretchX, ampStretchY);
-      drawImg('ampProjectile', -s * 0.48, -s * 0.88, s * 0.96, s * 0.88, '#68452b');
+      // Nearly twice the former size, with its bottom aligned to the ground.
+      drawImg('ampProjectile', -s * 0.48, -s * 0.44, s * 0.96, s * 0.88, '#68452b');
       ctx.restore();
-
-      // Sideways guitar gets the strongest riff/solo shake, synced to music and beats.
-      const guitarRiff = Math.min(1, bodyPulse * 0.9 + beatKick * 0.4);
-      const guitarShakeX = Math.sin(time * 47 + phase * 2.0) * (1.2 + guitarRiff * 5.0);
-      const guitarShakeY = Math.cos(time * 39 + phase * 1.4) * (0.8 + guitarRiff * 3.2);
+      // GUITAR is large and held across DOGODA's torso, angled like a real playing pose.
+      // It stays in the character's hands (visual layer), rather than floating at the side or firing as a projectile.
       ctx.save();
-      ctx.filter = 'none';
-      ctx.translate(t.x + s * 0.08 + guitarShakeX,
-                    t.y - s * 0.04 + guitarShakeY);
-      ctx.rotate(-0.42 + Math.sin(time * 36 + phase * 1.8) * (0.025 + guitarRiff * 0.12));
+      ctx.filter = (t.disabledTimer || 0) > 0 ? 'grayscale(1) brightness(.72)' : 'none';
+      ctx.translate(t.x + s * 0.08 + shakeX + propShake * 0.45,
+                    t.y - s * 0.04 + shakeY + propBounce * 0.45);
+      ctx.rotate(-0.72 + Math.sin(phase + 0.8) * (0.018 + musicPulse * 0.075));
       drawImg('guitar', -s * 0.72, -s * 0.34, s * 1.44, s * 0.68, '#e7b63c');
       ctx.restore();
     }
 
     ctx.save();
     setHue(T.id === 'dogoda' ? 0 : T.hue);
-    ctx.translate(t.x + shakeX, t.y + (isDogoda ? 0 : bop * 20) + shakeY);
+    ctx.translate(t.x + shakeX, t.y + bop * 20 + shakeY);
     ctx.rotate(t.aim);
     ctx.translate(T.melee ? t.punch * 16 : -t.punch * 6, 0);
     if (T.melee) ctx.rotate(-t.punch * 0.9);
@@ -1269,13 +1313,20 @@ function render() {
   let hovered = null, hd = 1e9;
   for (const e of enemies) {
     const s = e.size;
-    const air = Math.abs(Math.sin(time * 7 + e.phase));
-    const hop = air * 8;
-    const sq = (0.5 - air) * 0.2;
+    const air = e.isBoss ? 0 : Math.abs(Math.sin(time * 7 + e.phase));
+    const hop = e.isBoss ? 0 : air * 8;
+    const sq = e.isBoss ? 0 : (0.5 - air) * 0.2;
+    if (e.isBoss && e.slamFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.8, e.slamFlash);
+      ctx.strokeStyle = '#b8c4cc'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(e.x, e.y, (1 - e.slamFlash / 0.75) * (selectedDifficulty === 'hard' ? 178 : selectedDifficulty === 'medium' ? 154 : 135), 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
     ctx.save();
     ctx.translate(e.x, e.y + s / 2 - hop);
     ctx.scale((1 + sq) * e.flip, 1 - sq);
-    drawImg(e.img, -s / 2, -s, s, s, e.type === 'greenistan' ? '#2d2' : '#d33');
+    drawImg(e.img, -s / 2, -s, s, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : '#d33');
     ctx.restore();
     if (mouse.x >= 0) {
       const d = Math.hypot(mouse.x - e.x, mouse.y - e.y);
@@ -1285,7 +1336,7 @@ function render() {
 
   if (hovered && running) {
     const e = hovered, s = e.size;
-    const bw = 56, bx = e.x - bw / 2, by = e.y - s / 2 - 22;
+    const bw = e.isBoss ? 100 : 56, bx = e.x - bw / 2, by = e.y - s / 2 - 22;
     ctx.fillStyle = '#000'; ctx.fillRect(bx - 2, by - 2, bw + 4, 12);
     ctx.fillStyle = '#400'; ctx.fillRect(bx, by, bw, 8);
     const pct = Math.max(0, e.hp / e.maxHp);
@@ -1294,7 +1345,7 @@ function render() {
     ctx.font = '8px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
     ctx.lineWidth = 3; ctx.strokeStyle = '#000';
-    const txt = Math.ceil(e.hp) + '/' + Math.ceil(e.maxHp);
+    const txt = (e.isBoss ? 'BOSS ' : '') + Math.ceil(e.hp) + '/' + Math.ceil(e.maxHp);
     ctx.strokeText(txt, e.x, by - 5);
     ctx.fillStyle = '#fff'; ctx.fillText(txt, e.x, by - 5);
     ctx.textAlign = 'left';
