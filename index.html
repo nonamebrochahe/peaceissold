@@ -67,8 +67,14 @@
   #menu #leafCv { z-index: 3 !important; }
   #menu h1, #menu .gemrow, #menu .rbtn { z-index: 4; }
   #maps > *, #inventory > *, #shopScreen > *, #end > * { z-index: 2; }
-  #inventoryCards, #shopCards { width:100%; max-height:400px; overflow-y:auto; gap:10px; align-content:center; padding:8px; }
-  #inventoryCards .card, #shopCards .card { width:250px; margin:6px; }
+  #inventoryCards, #shopCards { width:min(900px,100%); max-height:390px; overflow-y:auto; gap:12px; align-content:flex-start; padding:12px; display:flex; flex-wrap:wrap; justify-content:center; }
+  #inventoryCards .card, #shopCards .card { width:190px; height:250px; min-width:190px; max-width:190px; margin:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow:hidden; }
+  #inventoryCards .card .tower-desc, #shopCards .card .tower-desc { min-height:38px; max-height:38px; overflow:hidden; }
+  .tower-level { color:#fff36a; font-size:10px; margin:5px 0; }
+  .xp-panel { width:min(420px,90%); margin:0 0 14px; padding:10px; border:4px solid #24180d; background:rgba(0,0,0,.38); font-size:10px; line-height:2; }
+  .xp-track { width:100%; height:12px; border:2px solid #000; background:#302014; margin-top:4px; }
+  .xp-fill { height:100%; width:0%; background:#76e35c; }
+  #summonResult { min-height:40px; max-width:700px; color:#fff36a; font-size:11px; line-height:2; margin:8px 0; }
   .card .tower-desc { font-size:9px; line-height:2; color:#ffe2b7; margin:5px 0; }
   .shop-price { display:block; margin:7px 0; color:#ffd95a; font-size:10px; line-height:2; }
   .tree { position: absolute !important; bottom: 0; width: 280px; height: 600px; object-fit: contain; object-position: left bottom; z-index: 1 !important; transform-origin: 50% 100%; pointer-events: none; }
@@ -161,8 +167,9 @@
     <h1>PEACE<br>IS SOLD</h1>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
     <button class="rbtn" id="btnPlay">PLAY</button>
-    <button class="rbtn" id="btnInventory" style="font-size:16px">INVENTORY</button>
-    <button class="rbtn" id="btnShopMenu" style="font-size:16px">SHOP</button>
+    <div class="xp-panel"><div id="menuPlayerLevel">PLAYER LEVEL 1</div><div class="xp-track"><div class="xp-fill" id="menuXpFill"></div></div><div id="menuXpText">0 / 100 XP</div></div>
+    <button class="rbtn" id="btnInventory" style="font-size:16px">TOWERS</button>
+    <button class="rbtn" id="btnShopMenu" style="font-size:16px">SUMMON</button>
   </div>
 
   <!-- ONE MAP, THREE DIFFICULTY OPTIONS -->
@@ -180,16 +187,20 @@
 
   <!-- INVENTORY -->
   <div class="screen hidden" id="inventory">
-    <h2>INVENTORY</h2>
+    <h2>TOWERS</h2>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
+    <div class="xp-panel"><div id="towersPlayerLevel">PLAYER LEVEL 1</div><div class="xp-track"><div class="xp-fill" id="towersXpFill"></div></div><div id="towersXpText">0 / 100 XP</div></div>
     <div class="row" id="inventoryCards"></div>
     <button class="rbtn small" id="btnInventoryBack">BACK</button>
   </div>
 
   <!-- TOWER SHOP -->
   <div class="screen hidden" id="shopScreen">
-    <h2>TOWER SHOP</h2>
+    <h2>SUMMON TOWERS</h2>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
+    <div style="font-size:10px;line-height:2;color:#fff3d6">ROLL A RANDOM TOWER · DUPLICATES UPGRADE IT</div>
+    <div id="summonResult">Spend gems to summon a tower.</div>
+    <button class="rbtn small" id="btnSummon">SUMMON · 35 GEMS</button>
     <div class="row" id="shopCards"></div>
     <button class="rbtn small" id="btnShopBack">BACK</button>
   </div>
@@ -542,14 +553,38 @@ const ENEMY = {
 let pathTiles = new Set(), pathPts = [];
 
 /* ================== SAVE (gems + inventory) ================== */
-let gems = 0, owned = { delici: true };
+let gems = 0, owned = { delici: true }, towerLevels = { delici: 1 }, playerXP = 0, playerLevel = 1;
 try {
   gems = parseInt(localStorage.getItem('ps_gems'), 10) || 0;
   owned = Object.assign({ delici: true }, JSON.parse(localStorage.getItem('ps_inventory') || localStorage.getItem('ps_deck') || '{}'));
+  towerLevels = Object.assign({ delici: 1 }, JSON.parse(localStorage.getItem('ps_tower_levels') || '{}'));
+  playerXP = Math.max(0, parseInt(localStorage.getItem('ps_player_xp'), 10) || 0);
 } catch (e) {}
+function xpForNextLevel(level = playerLevel) { return 100 + Math.max(0, level - 1) * 50; }
+function updatePlayerLevel() {
+  playerLevel = 1; let xp = playerXP;
+  while (xp >= xpForNextLevel(playerLevel)) { xp -= xpForNextLevel(playerLevel); playerLevel++; }
+}
+function addPlayerXP(amount) {
+  const before = playerLevel; playerXP += Math.max(0, Math.floor(amount)); updatePlayerLevel(); save();
+  if (playerLevel > before) flash('PLAYER LEVEL UP! LEVEL ' + playerLevel + ' · +' + (playerLevel-before) + ' LEVEL');
+  refreshPlayerXP();
+}
+function refreshPlayerXP() {
+  updatePlayerLevel();
+  const currentXp = playerXP - Array.from({length: Math.max(0, playerLevel - 1)}, (_,i) => xpForNextLevel(i+1)).reduce((a,b)=>a+b,0);
+  const need = xpForNextLevel(playerLevel), pct = Math.max(0, Math.min(100, currentXp / need * 100));
+  ['menuPlayerLevel','towersPlayerLevel'].forEach(id => { const el=$(id); if(el) el.textContent='PLAYER LEVEL ' + playerLevel; });
+  ['menuXpFill','towersXpFill'].forEach(id => { const el=$(id); if(el) el.style.width=pct+'%'; });
+  ['menuXpText','towersXpText'].forEach(id => { const el=$(id); if(el) el.textContent=currentXp+' / '+need+' XP'; });
+}
 function save() {
-  try { localStorage.setItem('ps_gems', gems); localStorage.setItem('ps_inventory', JSON.stringify(owned)); localStorage.setItem('ps_deck', JSON.stringify(owned)); } catch (e) {}
+  try {
+    localStorage.setItem('ps_gems', gems); localStorage.setItem('ps_inventory', JSON.stringify(owned)); localStorage.setItem('ps_deck', JSON.stringify(owned));
+    localStorage.setItem('ps_tower_levels', JSON.stringify(towerLevels)); localStorage.setItem('ps_player_xp', playerXP);
+  } catch (e) {}
   document.querySelectorAll('.gemcount').forEach(el => el.textContent = gems);
+  refreshPlayerXP();
 }
 
 /* ================== IMAGES ================== */
@@ -651,6 +686,14 @@ function genPath() {
 
 /* ================== IN-GAME SHOP + MENU INVENTORY ================== */
 const typeOf = id => TOWER_TYPES.find(t => t.id === id);
+const towerLevelOf = id => Math.max(1, Number(towerLevels[id]) || 1);
+function scaledTowerType(type) {
+  const level = towerLevelOf(type.id), mul = 1 + (level - 1) * 0.08;
+  const clone = Object.assign({}, type, { collectionLevel: level });
+  if (!type.support) { clone.damage = type.damage * mul; clone.range = type.range * (1 + (level - 1) * 0.025); }
+  if (type.support) clone.attackBoost = type.attackBoost + (level - 1) * 0.025;
+  return clone;
+}
 const shopList = () => TOWER_TYPES.filter(t => t.placeable && owned[t.id]);
 
 function buildShop() {
@@ -732,68 +775,60 @@ function towerCard(t, statusText, buttonLabel, onBuy, disabled=false) {
   const c = document.createElement('div');
   c.className = 'card';
   c.style.cursor = 'default';
-  const k = bodyOf(t), h = hueOf(t);
-  // Use the exact asset URL even while Image() is still loading, so the shop
-  // never renders an empty placeholder just because the preload hasn't ended.
+  const k = bodyOf(t), h = hueOf(t), level = towerLevelOf(t.id);
   const iconStyle = (IMG[k] ? 'background-image:url(' + IMG[k] + ');background-color:transparent;' : 'background-color:#9b59b6;') + (h ? 'filter:hue-rotate(' + h + 'deg);' : '');
   const preview = t.id === 'dogoda'
-    ? '<div class="ico dogoda-shop-preview" style="width:96px;height:80px;margin:0 auto 8px;"><img class="preview-body" src="' + IMG.dogoda + '" alt="DOGODA"><img class="preview-amp" src="' + IMG.ampProjectile + '" alt="AMP"><img class="preview-guitar" src="' + IMG.guitar + '" alt="GUITAR"></div>'
-    : '<div class="ico" style="width:76px;height:76px;background-size:contain;background-repeat:no-repeat;background-position:center;margin:0 auto 8px;' + iconStyle + '"></div>';
-  c.innerHTML = preview +
-    '<strong>' + t.name + '</strong><div class="tower-desc">' + (t.description || '') + '</div>' +
-    '<span class="shop-price">BUILD: ' + t.cost + ' GOLD' + (t.gemCost !== undefined ? ' · UNLOCK: ' + t.gemCost + ' GEMS' : '') + '</span>' +
-    '<span style="color:#b8ef9a">' + statusText + '</span>';
+    ? '<div class="ico dogoda-shop-preview" style="width:96px;height:72px;margin:0 auto 5px;flex:none"><img class="preview-body" src="' + IMG.dogoda + '" alt="DOGODA"><img class="preview-amp" src="' + IMG.ampProjectile + '" alt="AMP"><img class="preview-guitar" src="' + IMG.guitar + '" alt="GUITAR"></div>'
+    : '<div class="ico" style="width:72px;height:72px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center;margin:0 auto 5px;' + iconStyle + '"></div>';
+  c.innerHTML = preview + '<strong>' + t.name + '</strong><div class="tower-level">LEVEL ' + level + '</div><div class="tower-desc">' + (t.description || '') + '</div>' +
+    '<span class="shop-price">BUILD: ' + t.cost + ' GOLD</span><span style="color:#b8ef9a;font-size:9px">' + statusText + '</span>';
   if (buttonLabel) {
-    const b = document.createElement('button');
-    b.className = 'hbtn';
-    b.style.margin = '10px 0 0';
-    b.textContent = buttonLabel;
-    b.disabled = disabled;
-    b.onclick = onBuy;
-    c.appendChild(b);
+    const b = document.createElement('button'); b.className='hbtn'; b.style.cssText='margin:8px 0 0;font-size:9px;padding:8px 6px;flex:none';
+    b.textContent=buttonLabel; b.disabled=disabled; b.onclick=onBuy; c.appendChild(b);
   }
   return c;
 }
-
+function upgradeCollectionTower(id) {
+  const t=typeOf(id); if(!t || !owned[id]) return;
+  const level=towerLevelOf(id), cost=25+level*20;
+  if(level>=20) return flash(t.name+' MAX LEVEL!');
+  if(gems<cost) return flash('NEED '+cost+' GEMS TO UPGRADE '+t.name);
+  gems-=cost; towerLevels[id]=level+1; addPlayerXP(20+level*5); save(); buildInventory(); buildShop();
+  flash(t.name+' UPGRADED TO LEVEL '+towerLevels[id]+'!');
+}
 function buildInventory() {
-  const box = $('inventoryCards');
-  if (!box) return;
-  box.innerHTML = '';
-  TOWER_TYPES.filter(t => t.placeable && owned[t.id]).forEach(t => {
-    box.appendChild(towerCard(t, 'OWNED', '', null));
-  });
-  if (!box.children.length) box.textContent = 'No towers unlocked yet.';
-  setGemIcons();
+  const box=$('inventoryCards'); if(!box) return; box.innerHTML='';
+  const list=TOWER_TYPES.filter(t=>t.placeable && owned[t.id]);
+  list.forEach(t=>box.appendChild(towerCard(t,'OWNED','UPGRADE · '+(25+towerLevelOf(t.id)*20)+' G',()=>upgradeCollectionTower(t.id),towerLevelOf(t.id)>=20 || gems < 25+towerLevelOf(t.id)*20)));
+  if(!box.children.length) box.textContent='No towers yet. Go to SUMMON!';
+  refreshPlayerXP(); setGemIcons();
 }
-
+const SUMMON_COST=35;
+function summonTower() {
+  if(gems<SUMMON_COST) { flash('NOT ENOUGH GEMS!'); return; }
+  gems-=SUMMON_COST;
+  const pool=[{id:'delici',w:55},{id:'efe',w:30},{id:'dogoda',w:15}];
+  let roll=Math.random()*pool.reduce((n,x)=>n+x.w,0), picked=pool[0].id;
+  for(const item of pool){ roll-=item.w; if(roll<=0){picked=item.id;break;} }
+  const t=typeOf(picked), duplicate=!!owned[picked];
+  if(!duplicate){ owned[picked]=true; towerLevels[picked]=1; }
+  else towerLevels[picked]=Math.min(20,towerLevelOf(picked)+1);
+  addPlayerXP(duplicate?35:50); save();
+  const result=$('summonResult');
+  result.innerHTML='<span style="color:'+(duplicate?'#ffcf69':'#aaff9c')+'">'+(duplicate?'DUPLICATE! AUTO UPGRADE':'NEW TOWER UNLOCKED!')+'</span><br><strong>'+t.name+' · LEVEL '+towerLevelOf(picked)+'</strong>';
+  buildInventory(); buildTowerShop(); buildShop();
+}
 function buildTowerShop() {
-  const box = $('shopCards');
-  if (!box) return;
-  box.innerHTML = '';
-  // Show each gem-unlockable tower whether locked or already owned. This keeps
-  // DOGODA's dogoda.png preview visible after purchase too.
-  const available = TOWER_TYPES.filter(t => t.placeable && Number.isFinite(t.gemCost));
-  available.forEach(t => {
-    const isOwned = !!owned[t.id];
-    box.appendChild(towerCard(
-      t,
-      isOwned ? 'OWNED · AVAILABLE IN INVENTORY' : 'PERMANENT UNLOCK',
-      isOwned ? 'OWNED' : 'BUY FOR ' + t.gemCost + ' GEMS',
-      isOwned ? null : () => {
-        if (gems < t.gemCost) return;
-        gems -= t.gemCost;
-        owned[t.id] = true;
-        save();
-        buildInventory();
-        buildTowerShop();
-        buildShop();
-      },
-      isOwned || gems < t.gemCost
-    ));
+  const box=$('shopCards'); if(!box) return; box.innerHTML='';
+  // Summon history preview: every tower has the same card dimensions as Towers.
+  TOWER_TYPES.filter(t=>t.placeable).forEach(t=>{
+    const isOwned=!!owned[t.id];
+    box.appendChild(towerCard(t,isOwned?'OWNED':'SUMMON POOL',isOwned?'LEVEL '+towerLevelOf(t.id):'LOCKED',null,true));
   });
-  if (!box.children.length) box.textContent = 'No towers available in shop.';
-  setGemIcons();
+  const btn=$('btnSummon'); if(btn) btn.disabled=gems<SUMMON_COST;
+  setGemIcons(); refreshPlayerXP();
 }
+$('btnSummon').onclick = summonTower;
 
 /* ================== GAME ================== */
 function reset() {
@@ -904,6 +939,7 @@ function launchWave() {
   waveCountdownLastNumber = 0;
   setWaveCountdown('');
   wave++;
+  addPlayerXP(10 + Math.floor(wave * 0.5));
   const queue = [];
   const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
   const n = Math.ceil((6 + wave * 1.5) * difficulty.mobs);
@@ -973,7 +1009,7 @@ cv.addEventListener('click', e => {
   if (existing) return flash('There is already a tower here!');
   if (money < type.cost) return flash('Not enough gold!');
   money -= type.cost;
-  towers.push({ type, tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, cd: 0, aim: 0, punch: 0, buffed: false });
+  towers.push({ type: scaledTowerType(type), tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, cd: 0, aim: 0, punch: 0, buffed: false });
   if (type.id === 'dogoda') startDogodaMusic();
   hud();
 });
@@ -987,7 +1023,7 @@ addEventListener('keydown', e => {
 });
 
 const SCREEN_IDS = ['menu', 'maps', 'inventory', 'shopScreen', 'end'];
-const show = id => { SCREEN_IDS.forEach(s => $(s).classList.toggle('hidden', s !== id)); };
+const show = id => { SCREEN_IDS.forEach(s => $(s).classList.toggle('hidden', s !== id)); refreshPlayerXP(); document.querySelectorAll('.gemcount').forEach(el => el.textContent=gems); };
 $('btnPlay').onclick = () => { startMenuMusic(); show('maps'); };
 $('btnMapBack').onclick = () => { show('menu'); startMenuMusic(); };
 $('btnInventory').onclick = () => { startMenuMusic(); buildInventory(); show('inventory'); };
@@ -1001,6 +1037,7 @@ $('btnAgain').onclick = startGame;
 $('btnToMenu').onclick = toMenu;
 $('btnMenu').onclick = toMenu;
 $('btnSkipWave').onclick = skipWave;
+refreshPlayerXP(); save();
 
 function startGame() {
   stopMenuMusic();
@@ -1028,7 +1065,7 @@ function endGame(win) {
   setWaveCountdown('');
   startMenuMusic();
   earnedGems = Math.floor(wave * 3 + (win ? 25 : 0) + (win ? baseHp / 10 : 0));
-  gems += earnedGems; save();
+  gems += earnedGems; playerXP += Math.max(10, wave * 4 + (win ? 100 : 0)); updatePlayerLevel(); save();
   $('earned').textContent = earnedGems;
   $('endTitle').textContent = win ? 'YOU WIN!' : 'GAME OVER';
   selTower = null; refreshInfo();
@@ -1142,7 +1179,9 @@ function update(dt) {
   }
   bullets = bullets.filter(b => !b.dead);
 
-  for (const e of enemies) if (e.hp <= 0) { money += e.reward; hud(); }
+  let killedCount = 0;
+  for (const e of enemies) if (e.hp <= 0) { money += e.reward; killedCount++; hud(); }
+  if (killedCount) addPlayerXP(killedCount * 5);
   enemies = enemies.filter(e => e.hp > 0);
 
   // Complete each wave independently. A skipped wave is not discarded, and
@@ -1217,6 +1256,25 @@ function render() {
     }
   }
 
+  // DOGODA amplifiers are drawn in a separate back layer, behind all tower bodies/weapons.
+  for (const t of towers) {
+    if (t.type.id !== 'dogoda') continue;
+    const s=t.type.size, musicPulse=dogodaMotionPulse();
+    const beat=!dogodaMusic.paused ? dogodaMusic.currentTime : time;
+    const phase=beat*(DOGODA_METRONOME_BPM/60)*Math.PI*2;
+    const ampVolume=!dogodaMusic.paused && dogodaAnalyser ? Math.max(dogodaVolumeLevel,dogodaBeatPulse*0.28) : musicPulse*0.52;
+    const ampShakeX=Math.sin(time*19+t.tx)*ampVolume*2.0;
+    const ampShakeY=Math.sin(time*13+t.ty)*ampVolume*1.2;
+    ctx.save();
+    ctx.filter=(t.disabledTimer||0)>0?'grayscale(1) brightness(.72)':'none';
+    ctx.translate(t.x-s*0.90+Math.sin(phase*0.5)*ampVolume*1.4+ampShakeX, t.y+s*0.08+ampShakeY);
+    ctx.rotate(Math.sin(phase*0.42+time*0.7)*ampVolume*0.045);
+    const ampScaleY=1+Math.min(0.10,ampVolume*0.10+dogodaBeatPulse*0.025);
+    ctx.scale(1,ampScaleY);
+    drawImg('ampProjectile',-s*0.43,-s*0.40,s*0.86,s*0.80,'#68452b');
+    ctx.restore();
+  }
+
   for (const t of towers) {
     const T = t.type, s = T.size;
     const musicPulse = T.id === 'dogoda' ? dogodaMotionPulse() : 0;
@@ -1240,31 +1298,12 @@ function render() {
     }
     ctx.restore();
 
-    // DOGODA keeps its character sprite, with the guitar and amplifier beside it.
-    // These are decorative props (not projectiles): both shake/bounce to the song.
+    // DOGODA guitar is drawn over the character; the amplifier is rendered in the back layer.
     if (T.id === 'dogoda') {
       const beat = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
       const phase = beat * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
       const propShake = Math.sin(phase * 0.5) * (2 + musicPulse * 4);
       const propBounce = -musicPulse * 4 + Math.sin(phase) * 1.5;
-      // AMP sits on the ground farther to DOGODA's left. It grows, jitters and
-      // stretches using the actual song volume rather than a decorative circle.
-      const ampVolume = !dogodaMusic.paused && dogodaAnalyser
-        ? Math.max(dogodaVolumeLevel, dogodaBeatPulse * 0.28)
-        : musicPulse * 0.52;
-      const ampShakeX = Math.sin(time * 36 + t.tx) * (ampVolume * 4.8);
-      const ampShakeY = Math.sin(time * 47 + t.ty) * (ampVolume * 3.4) - musicPulse * 2.0;
-      const ampStretchX = 1.0 + ampVolume * 0.32;
-      const ampStretchY = 1.0 + ampVolume * 0.24 + dogodaBeatPulse * 0.10;
-      ctx.save();
-      ctx.filter = (t.disabledTimer || 0) > 0 ? 'grayscale(1) brightness(.72)' : 'none';
-      ctx.translate(t.x - s * 0.96 - propShake + ampShakeX,
-                    t.y + s * 0.08 + shakeY + ampShakeY + propBounce * 0.35);
-      ctx.rotate(Math.sin(phase * 0.7 + time * 2) * ampVolume * 0.10);
-      ctx.scale(ampStretchX, ampStretchY);
-      // Nearly twice the former size, with its bottom aligned to the ground.
-      drawImg('ampProjectile', -s * 0.48, -s * 0.44, s * 0.96, s * 0.88, '#68452b');
-      ctx.restore();
       // GUITAR is large and held across DOGODA's torso, angled like a real playing pose.
       // It stays in the character's hands (visual layer), rather than floating at the side or firing as a projectile.
       ctx.save();
