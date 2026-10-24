@@ -1179,46 +1179,56 @@ function render() {
     const beatPhase = rhythmTime * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
     const rhythmicBop = 0;
     const bop = isDogoda ? 0 : Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.035;
-    // DOGODA stretches from its original size and always eases back; no position shake.
+    // DOGODA: subtle stretch, with energetic music-driven riff shake instead.
     const bodyPulse = isDogoda ? Math.min(1, Math.max(0, musicPulse)) : 0;
     const bodyBeat = Math.pow(Math.max(0, Math.cos(beatPhase)), 18);
-    const bodyScaleX = isDogoda ? 1 + bodyPulse * 0.06 : 1;
-    const bodyScaleY = isDogoda ? 1 + bodyPulse * 0.72 + bodyBeat * 0.42 : 1;
+    const riffEnergy = isDogoda ? Math.min(1, bodyPulse * 0.8 + bodyBeat * 0.35) : 0;
+    const bodyScaleX = isDogoda ? 1 + bodyPulse * 0.025 : 1;
+    const bodyScaleY = isDogoda ? 1 + bodyPulse * 0.10 + bodyBeat * 0.035 : 1;
     const sq = isDogoda ? 0 : bop + t.punch * 0.12;
-    const shakeX = 0;
-    const shakeY = 0;
+    // Small local movement only: no camera/screen shake. Louder riffs shake harder.
+    const shakeX = isDogoda ? Math.sin(time * 31 + beatPhase * 2.1) * (1.5 + riffEnergy * 4.0) : 0;
+    const shakeY = isDogoda ? Math.sin(time * 39 + beatPhase * 1.3) * (0.8 + riffEnergy * 2.0) : 0;
     ctx.save();
     setHue(hueOf(T));
     ctx.translate(t.x + shakeX, t.y + s / 2 + shakeY);
-    // No positional shake or body rotation for DOGODA; only scale-pulsing.
+    // Keep the body mostly its natural size; music is expressed through a local riff shake.
+    if (isDogoda) ctx.rotate(Math.sin(time * 28 + beatPhase) * (0.012 + riffEnergy * 0.025));
     ctx.scale(bodyScaleX * (1 - sq), bodyScaleY * (1 + sq));
     drawImg(bodyOf(T), -s / 2, -s, s, s, '#9b59b6');
     ctx.restore();
 
-    // DOGODA props: the amp stays planted; the guitar is rotated sideways.
+    // DOGODA props: tiny upward stretch plus lively local shaking on riffs.
     if (isDogoda) {
       const phase = beatPhase;
       const ampVolume = Math.max(0, Math.min(1,
         !dogodaMusic.paused && dogodaAnalyser ? dogodaVolumeLevel : bodyPulse * 0.35));
-      // A temporary beat envelope adds a tall pop, then rapidly returns to native PNG size.
+      // Start from the PNG's normal size. Stretch is intentionally restrained;
+      // loud riffs are shown mostly by shaking, not by leaving the amp stretched.
       const beatKick = Math.pow(Math.max(0, Math.cos(phase)), 18);
+      const ampRiff = Math.min(1, ampVolume * 0.85 + beatKick * 0.35);
+      const ampShakeX = Math.sin(time * 34 + phase * 1.7) * (1.0 + ampRiff * 3.2);
+      const ampShakeY = Math.sin(time * 43 + phase * 1.2) * (0.8 + ampRiff * 2.2);
       const ampStretchX = 1.0;
-      const ampStretchY = 1.0 + ampVolume * 0.85 + beatKick * 0.58;
+      const ampStretchY = 1.0 + ampVolume * 0.075 + beatKick * 0.035;
       ctx.save();
       ctx.filter = 'none';
       // Anchor the amplifier at its bottom so its PNG grows upward with the music.
-      ctx.translate(t.x - s * 1.34,
-                    t.y + s * 0.48);
+      ctx.translate(t.x - s * 1.34 + ampShakeX,
+                    t.y + s * 0.48 + ampShakeY);
       ctx.scale(ampStretchX, ampStretchY);
       drawImg('ampProjectile', -s * 0.48, -s * 0.88, s * 0.96, s * 0.88, '#68452b');
       ctx.restore();
 
-      // Guitar is dramatically sideways, with a smooth metronome-synced tilt (no shaking).
+      // Sideways guitar gets the strongest riff/solo shake, synced to music and beats.
+      const guitarRiff = Math.min(1, bodyPulse * 0.9 + beatKick * 0.4);
+      const guitarShakeX = Math.sin(time * 47 + phase * 2.0) * (1.2 + guitarRiff * 5.0);
+      const guitarShakeY = Math.cos(time * 39 + phase * 1.4) * (0.8 + guitarRiff * 3.2);
       ctx.save();
       ctx.filter = 'none';
-      ctx.translate(t.x + s * 0.08,
-                    t.y - s * 0.04 + Math.sin(phase) * bodyPulse * 1.8);
-      ctx.rotate(-0.42 + Math.sin(phase + 0.8) * bodyPulse * 0.055);
+      ctx.translate(t.x + s * 0.08 + guitarShakeX,
+                    t.y - s * 0.04 + guitarShakeY);
+      ctx.rotate(-0.42 + Math.sin(time * 36 + phase * 1.8) * (0.025 + guitarRiff * 0.12));
       drawImg('guitar', -s * 0.72, -s * 0.34, s * 1.44, s * 0.68, '#e7b63c');
       ctx.restore();
     }
