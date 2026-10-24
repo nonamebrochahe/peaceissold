@@ -1203,19 +1203,25 @@ function render() {
       const phase = beatPhase;
       const ampVolume = Math.max(0, Math.min(1,
         !dogodaMusic.paused && dogodaAnalyser ? dogodaVolumeLevel : bodyPulse * 0.35));
-      // Start from the PNG's normal size. Stretch is intentionally restrained;
-      // loud riffs are shown mostly by shaking, not by leaving the amp stretched.
-      const beatKick = Math.pow(Math.max(0, Math.cos(phase)), 18);
-      const ampRiff = Math.min(1, ampVolume * 0.85 + beatKick * 0.35);
-      const ampShakeX = Math.sin(time * 34 + phase * 1.7) * (1.0 + ampRiff * 3.2);
-      const ampShakeY = Math.sin(time * 43 + phase * 1.2) * (0.8 + ampRiff * 2.2);
+      // The amp reacts independently to drum hits: strong, heavy cabinet wobble,
+      // while its PNG stays close to its natural size (no giant permanent stretch).
+      // dogodaBeatPulse is driven by detected bass/kick transients when audio analysis works.
+      const metronomeKick = Math.pow(Math.max(0, Math.cos(phase)), 22);
+      const audioKick = Math.max(0, Math.min(1, dogodaBeatPulse * 1.7));
+      const beatKick = Math.max(metronomeKick * 0.20, audioKick);
+      const ampRiff = Math.max(0, Math.min(1, ampVolume * 0.65 + beatKick * 0.75));
+      const ampShakeX = Math.sin(time * 18 + phase * 1.15) * (1.8 + ampRiff * 7.5)
+                      + Math.sin(time * 31 + phase * 2.0) * (ampRiff * 2.0);
+      const ampShakeY = Math.abs(Math.sin(time * 15 + phase * 0.9)) * (1.0 + ampRiff * 5.5);
+      const ampTilt = Math.sin(time * 17 + phase) * (0.012 + ampRiff * 0.055);
       const ampStretchX = 1.0;
-      const ampStretchY = 1.0 + ampVolume * 0.075 + beatKick * 0.035;
+      const ampStretchY = 1.0 + ampVolume * 0.025 + beatKick * 0.025;
       ctx.save();
       ctx.filter = 'none';
-      // Anchor the amplifier at its bottom so its PNG grows upward with the music.
-      ctx.translate(t.x - s * 1.34 + ampShakeX,
+      // Shift cabinet toward DOGODA; pivot near its bottom so it wobbles like a heavy amp.
+      ctx.translate(t.x - s * 0.99 + ampShakeX,
                     t.y + s * 0.48 + ampShakeY);
+      ctx.rotate(ampTilt);
       ctx.scale(ampStretchX, ampStretchY);
       drawImg('ampProjectile', -s * 0.48, -s * 0.88, s * 0.96, s * 0.88, '#68452b');
       ctx.restore();
