@@ -41,12 +41,12 @@
   .dogoda-mini .mini-body { width:27px; height:27px; left:5px; top:0; z-index:1; }
   .dogoda-mini .mini-amp { width:22px; height:21px; left:-7px; bottom:-2px; z-index:2; }
   /* Guitar is held across DOGODA's body, not a tiny prop floating beside it. */
-  .dogoda-mini .mini-guitar { width:27px; height:17px; left:13px; top:7px; right:auto; bottom:auto; z-index:3; transform:rotate(-28deg); transform-origin:center; }
+  .dogoda-mini .mini-guitar { width:27px; height:17px; left:13px; top:7px; right:auto; bottom:auto; z-index:3; transform:rotate(-12deg); transform-origin:center; }
   .dogoda-shop-preview { position:relative; background:none !important; filter:none !important; }
   .dogoda-shop-preview img { position:absolute; object-fit:contain; image-rendering:pixelated; filter:none !important; -webkit-filter:none !important; }
   .dogoda-shop-preview .preview-body { width:65px; height:65px; left:8px; top:0; z-index:1; }
   .dogoda-shop-preview .preview-amp { width:44px; height:41px; left:-9px; bottom:-4px; z-index:2; }
-  .dogoda-shop-preview .preview-guitar { width:60px; height:38px; left:22px; top:18px; right:auto; bottom:auto; z-index:3; transform:rotate(-28deg); transform-origin:center; }
+  .dogoda-shop-preview .preview-guitar { width:60px; height:38px; left:22px; top:18px; right:auto; bottom:auto; z-index:3; transform:rotate(-12deg); transform-origin:center; }
 
   #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(61,40,25,.94); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
   #info .hbtn { margin: 6px 6px 0 0; font-size: 9px; padding: 8px; }
@@ -1173,53 +1173,53 @@ function render() {
 
   for (const t of towers) {
     const T = t.type, s = T.size;
-    const musicPulse = T.id === 'dogoda' ? dogodaMotionPulse() : 0;
+    const isDogoda = T.id === 'dogoda';
+    const musicPulse = isDogoda ? dogodaMotionPulse() : 0;
     const rhythmTime = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
-    const rhythmicBop = T.id === 'dogoda' ? Math.sin(rhythmTime * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2) * 0.025 : 0;
-    const bop = Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.05 + rhythmicBop;
-    const sq = bop + t.punch * 0.12 + musicPulse * (T.id === 'dogoda' ? 0.05 : 0);
-    const shakeX = T.id === 'dogoda' ? Math.sin(time * 47 + t.tx * 2.1) * musicPulse * 5 : 0;
-    const shakeY = T.id === 'dogoda' ? -musicPulse * 7 : 0;
+    const beatPhase = rhythmTime * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
+    const rhythmicBop = isDogoda ? Math.sin(beatPhase) * 0.012 : 0;
+    const bop = Math.sin(time * 3 + t.tx * 1.7 + t.ty) * 0.035 + rhythmicBop;
+    // Keep DOGODA's body proportions stable: only a tiny, capped beat bounce.
+    const bodyPulse = isDogoda ? Math.min(1, Math.max(0, musicPulse)) : 0;
+    const bodyScaleX = isDogoda ? 1 + bodyPulse * 0.012 : 1;
+    const bodyScaleY = isDogoda ? 1 - bodyPulse * 0.008 : 1;
+    const sq = isDogoda ? bop * 0.35 : bop + t.punch * 0.12;
+    const shakeX = isDogoda ? Math.sin(time * 47 + t.tx * 2.1) * bodyPulse * 1.1 : 0;
+    const shakeY = isDogoda ? -bodyPulse * 1.2 : 0;
     ctx.save();
     setHue(hueOf(T));
     ctx.translate(t.x + shakeX, t.y + s / 2 + shakeY);
-    if (T.id === 'dogoda') ctx.rotate(Math.sin(time * 43 + t.ty) * musicPulse * 0.045);
-    ctx.scale(1 - sq + musicPulse * (T.id === 'dogoda' ? 0.055 : 0), 1 + sq + musicPulse * (T.id === 'dogoda' ? 0.075 : 0));
+    if (isDogoda) ctx.rotate(Math.sin(beatPhase) * bodyPulse * 0.008);
+    ctx.scale(bodyScaleX * (1 - sq), bodyScaleY * (1 + sq));
     drawImg(bodyOf(T), -s / 2, -s, s, s, '#9b59b6');
     ctx.restore();
 
-    // DOGODA keeps its character sprite, with the guitar and amplifier beside it.
-    // These are decorative props (not projectiles): both shake/bounce to the song.
-    if (T.id === 'dogoda') {
-      const beat = !dogodaMusic.paused ? dogodaMusic.currentTime : time;
-      const phase = beat * (DOGODA_METRONOME_BPM / 60) * Math.PI * 2;
-      const propShake = Math.sin(phase * 0.5) * (2 + musicPulse * 4);
-      const propBounce = -musicPulse * 4 + Math.sin(phase) * 1.5;
-      // AMP sits on the ground farther to DOGODA's left. It grows, jitters and
-      // stretches using the actual song volume rather than a decorative circle.
-      const ampVolume = !dogodaMusic.paused && dogodaAnalyser
-        ? Math.max(dogodaVolumeLevel, dogodaBeatPulse * 0.28)
-        : musicPulse * 0.52;
-      const ampShakeX = Math.sin(time * 36 + t.tx) * (ampVolume * 4.8);
-      const ampShakeY = Math.sin(time * 47 + t.ty) * (ampVolume * 3.4) - musicPulse * 2.0;
-      const ampStretchX = 1.0 + ampVolume * 0.32;
-      const ampStretchY = 1.0 + ampVolume * 0.24 + dogodaBeatPulse * 0.10;
+    // DOGODA props: the amp stays planted; the guitar is rotated sideways.
+    if (isDogoda) {
+      const phase = beatPhase;
+      const propBounce = -bodyPulse * 2.0 + Math.sin(phase) * 0.7;
+      const ampVolume = Math.max(0, Math.min(1,
+        !dogodaMusic.paused && dogodaAnalyser
+          ? Math.max(dogodaVolumeLevel, dogodaBeatPulse * 0.28)
+          : bodyPulse * 0.52));
+      // Amp does not shake or rotate. A restrained volume-driven stretch gives it life
+      // without the old extreme full-body distortion.
+      const ampStretchX = 1.0 + ampVolume * 0.11 + dogodaBeatPulse * 0.025;
+      const ampStretchY = 1.0 + ampVolume * 0.055;
       ctx.save();
       ctx.filter = 'none';
-      ctx.translate(t.x - s * 0.96 - propShake + ampShakeX,
-                    t.y + s * 0.08 + shakeY + ampShakeY + propBounce * 0.35);
-      ctx.rotate(Math.sin(phase * 0.7 + time * 2) * ampVolume * 0.10);
+      ctx.translate(t.x - s * 1.22,
+                    t.y + s * 0.08 + propBounce * 0.15);
       ctx.scale(ampStretchX, ampStretchY);
-      // Nearly twice the former size, with its bottom aligned to the ground.
       drawImg('ampProjectile', -s * 0.48, -s * 0.44, s * 0.96, s * 0.88, '#68452b');
       ctx.restore();
-      // GUITAR is large and held across DOGODA's torso, angled like a real playing pose.
-      // It stays in the character's hands (visual layer), rather than floating at the side or firing as a projectile.
+
+      // Guitar lies more horizontally across DOGODA, with only a subtle beat accent.
       ctx.save();
       ctx.filter = 'none';
-      ctx.translate(t.x + s * 0.08 + shakeX + propShake * 0.45,
-                    t.y - s * 0.04 + shakeY + propBounce * 0.45);
-      ctx.rotate(-0.72 + Math.sin(phase + 0.8) * (0.018 + musicPulse * 0.075));
+      ctx.translate(t.x + s * 0.08 + shakeX,
+                    t.y - s * 0.04 + shakeY + propBounce * 0.35);
+      ctx.rotate(-0.28 + Math.sin(phase + 0.8) * (0.008 + bodyPulse * 0.018));
       drawImg('guitar', -s * 0.72, -s * 0.34, s * 1.44, s * 0.68, '#e7b63c');
       ctx.restore();
     }
