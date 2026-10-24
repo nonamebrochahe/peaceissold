@@ -612,9 +612,10 @@ const START_MONEY = 150;
 let MAX_WAVE = 10;
 let selectedDifficulty = 'easy';
 const DIFFICULTIES = {
-  easy:   { label: 'EASY', waves: 10, hp: 1, speed: 1, mobs: 1, boss: 1 },
-  medium: { label: 'MEDIUM', waves: 20, hp: 1.15, speed: 1.05, mobs: 1.08, boss: 1.25 },
-  hard:   { label: 'HARD', waves: 40, hp: 1.3, speed: 1.08, mobs: 1.15, boss: 1.55 }
+  // waveScale: how fast enemy HP ramps up per wave (shorter modes ramp faster so their last waves still bite).
+  easy:   { label: 'EASY', waves: 10, hp: 1, speed: 1, mobs: 1, boss: 1, waveScale: 1.25 },
+  medium: { label: 'MEDIUM', waves: 20, hp: 1.15, speed: 1.05, mobs: 1.08, boss: 1.25, waveScale: 1.5 },
+  hard:   { label: 'HARD', waves: 40, hp: 1.3, speed: 1.08, mobs: 1.15, boss: 1.55, waveScale: 1.05 }
 };
 
 /* Tower shop: gemCost unlocks a tower permanently; cost is the in-game gold placement price. */
@@ -652,7 +653,7 @@ const ENEMY = {
   // Desert enemies: SANDITY is its own slow enemy (sandity.png).
   // The faster one is drawn with a 3-frame walk animation: sandity1.png -> sandity2.png -> sandity3.png.
   sandity:    { hp: 10, speed: 56,  reward: 6,  size: 50, dmg: 5 },
-  sandity1:   { hp: 20, speed: 112, reward: 10, size: 52, dmg: 8 }
+  sandity1:   { hp: 18, speed: 108, reward: 10, size: 52, dmg: 8 }
 };
 
 let pathTiles = new Set(), pathPts = [];
@@ -661,7 +662,7 @@ let selectedMap = 'grass';
 const MAPS = {
   // hpMul / speedMul / rewardMul / mobMul: desert is clearly harder than grassland.
   grass:  { label: 'GRASSLAND', ground: 'grass', path: 'dirt',     groundFb: '#3d8b37', pathFb: '#8a5a2b', cacti: 0, hpMul: 1,    speedMul: 1,    rewardMul: 1,   mobMul: 1 },
-  desert: { label: 'DESERT',    ground: 'sand',  path: 'sandpath', groundFb: '#d9b36a', pathFb: '#b88a4a', cacti: 4, hpMul: 1.35, speedMul: 1.10, rewardMul: 0.9, mobMul: 1.15 }
+  desert: { label: 'DESERT',    ground: 'sand',  path: 'sandpath', groundFb: '#d9b36a', pathFb: '#b88a4a', cacti: 4, hpMul: 1.4, speedMul: 1.08, rewardMul: 0.9, mobMul: 1.1 }
 };
 let floatTexts = [];
 
@@ -1129,7 +1130,7 @@ function pickEnemyType(w) {
   if (selectedMap === 'desert') {
     const ew = Math.min(w, 10) + Math.max(0, w - 10) * 0.5;
     const slowW = Math.max(0.15, 1 - ew * 0.12);
-    const fastW = ew >= 2 ? Math.min(0.85, 0.25 + ew * 0.08) : 0;
+    const fastW = ew >= 3 ? Math.min(0.85, 0.05 + ew * 0.08) : 0;
     return Math.random() * (slowW + fastW) < slowW ? 'sandity' : 'sandity1';
   }
   const redChance = Math.min(0.15 + w * 0.07 + (selectedDifficulty === 'hard' ? 0.12 : selectedDifficulty === 'medium' ? 0.05 : 0), 0.88);
@@ -1193,11 +1194,14 @@ function spawnEnemy(type, waveId) {
   // Gradual scaling keeps 20- and 40-wave runs challenging without becoming absurd.
   const MP = MAPS[selectedMap] || MAPS.grass;
   const k = waveId - 1;
-  // HP grows steeply with the wave number (linear + quadratic + cubic), so late waves really hurt.
-  const waveHpMul = isBoss ? 1 : 1 + 0.10 * k + 0.007 * k * k + 0.0005 * k * k * k;
+  const kh = k * (difficulty.waveScale || 1);
+  // HP grows steeply with the wave number (linear + quadratic + a little cubic), so late waves really hurt.
+  const waveHpMul = isBoss ? 1 : 1 + 0.10 * kh + 0.014 * kh * kh + 0.0001 * kh * kh * kh;
   const spMul = Math.min(1.6, 1 + k * 0.010);
   const difficultyHp = isBoss ? difficulty.boss : difficulty.hp;
-  const hp = d.hp * waveHpMul * difficultyHp * MP.hpMul;
+  // The map's HP bonus ramps in over the first 10 waves, so early desert waves are not a wall.
+  const mapHpMul = 1 + (MP.hpMul - 1) * Math.min(1, k / 10);
+  const hp = d.hp * waveHpMul * difficultyHp * mapHpMul;
   enemies.push({ type, waveId, isBoss, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
     hp, maxHp: hp, speed: d.speed * spMul * difficulty.speed * MP.speedMul, reward: Math.round(d.reward * MP.rewardMul), size: d.size,
     dmg: d.dmg, img: isBoss ? (desert ? 'sandboss' : 'boss') : type, dir: 1,
