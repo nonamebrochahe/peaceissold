@@ -165,22 +165,15 @@
     <button class="rbtn" id="btnShopMenu" style="font-size:16px">SHOP</button>
   </div>
 
-  <!-- MAP SELECT -->
+  <!-- ONE MAP, THREE DIFFICULTY OPTIONS -->
   <div class="screen hidden" id="maps">
-    <h2>SELECT MAP</h2>
-    <div class="row" style="flex-wrap:wrap;gap:14px">
-      <div class="card" id="grassEasy" role="button" tabindex="0">
-        <div class="pic" id="grassPic"></div>
-        GRASSLAND<br><span style="color:#0f0">EASY</span>
-      </div>
-      <div class="card" id="grassMedium" role="button" tabindex="0">
-        <div class="pic" id="grassPicMedium"></div>
-        GRASSLAND<br><span style="color:#ffb000">MEDIUM</span>
-      </div>
-      <div class="card" id="grassHard" role="button" tabindex="0">
-        <div class="pic" id="grassPicHard"></div>
-        GRASSLAND<br><span style="color:#f44">HARD</span>
-      </div>
+    <h2>SELECT DIFFICULTY</h2>
+    <div class="card grassland-card" style="width:360px;cursor:default">
+      <div class="pic" id="grassPic"></div>
+      <div style="font-size:16px;color:#fff3d6;margin:8px 0 16px">GRASSLAND</div>
+      <button class="rbtn small difficulty-btn" id="difficultyEasy" style="border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
+      <button class="rbtn small difficulty-btn" id="difficultyMedium" style="border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
+      <button class="rbtn small difficulty-btn" id="difficultyHard" style="border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
     </div>
     <button class="rbtn small" id="btnMapBack">BACK</button>
   </div>
@@ -518,9 +511,9 @@ const START_MONEY = 120;
 let MAX_WAVE = 10;
 let selectedDifficulty = 'easy';
 const DIFFICULTIES = {
-  easy:   { label: 'EASY', hp: 1, speed: 1, mobs: 1, boss: 1 },
-  medium: { label: 'MEDIUM', hp: 1.65, speed: 1.12, mobs: 1.25, boss: 1.8 },
-  hard:   { label: 'HARD', hp: 2.5, speed: 1.25, mobs: 1.55, boss: 2.8 }
+  easy:   { label: 'EASY', waves: 10, hp: 1, speed: 1, mobs: 1, boss: 1 },
+  medium: { label: 'MEDIUM', waves: 20, hp: 1.15, speed: 1.05, mobs: 1.08, boss: 1.25 },
+  hard:   { label: 'HARD', waves: 40, hp: 1.3, speed: 1.08, mobs: 1.15, boss: 1.55 }
 };
 
 /* Tower shop: gemCost unlocks a tower permanently; cost is the in-game gold placement price. */
@@ -566,7 +559,7 @@ function setGemIcons() {
     el.style.backgroundImage = images.gems ? 'url(' + IMG.gems + ')' : 'none';
     el.style.backgroundColor = images.gems ? 'transparent' : '#3cf';
   });
-  ['grassPic', 'grassPicMedium', 'grassPicHard'].forEach(id => {
+  ['grassPic'].forEach(id => {
     const gp = document.getElementById(id);
     if (gp) gp.style.backgroundImage = images.grass ? 'url(' + IMG.grass + ')' : 'none';
   });
@@ -868,7 +861,7 @@ function currentWaveEnemyCount(waveId = wave) {
 function canSkipWave() {
   const batch = currentWaveBatch();
   if (!running || !batch || wave >= MAX_WAVE || waveCountdownRemaining > 0) return false;
-  const totalMobs = 7 + batch.id * 3;
+  const totalMobs = Math.ceil((6 + batch.id * 1.5) * (DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy).mobs);
   const remaining = batch.queue.length + currentWaveEnemyCount(batch.id);
   const threshold = Math.max(4, Math.ceil(totalMobs * 0.24));
   return remaining > 0 && remaining <= threshold;
@@ -913,15 +906,15 @@ function launchWave() {
   wave++;
   const queue = [];
   const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
-  const n = Math.ceil((7 + wave * 3) * difficulty.mobs);
+  const n = Math.ceil((6 + wave * 1.5) * difficulty.mobs);
   const redChance = Math.min(0.15 + wave * 0.07 + (selectedDifficulty === 'hard' ? 0.12 : selectedDifficulty === 'medium' ? 0.05 : 0), 0.88);
   for (let i = 0; i < n; i++) queue.push(Math.random() < redChance && wave > 1 ? 'redistan' : 'greenistan');
-  // A boss appears in every wave; each later wave makes it tougher.
-  queue.push('boss');
+  // The boss appears only in the final wave of the selected difficulty.
+  if (wave === MAX_WAVE) queue.push('boss');
   waveBatches.push({
     id: wave,
     queue,
-    spawnTimer: Math.max(0.7, 1.05 - wave * 0.035),
+    spawnTimer: Math.max(0.82, 1.12 - wave * 0.006),
     skipReadyNotified: false,
     completed: false
   });
@@ -943,16 +936,17 @@ function spawnEnemy(type, waveId) {
   const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
   const isBoss = type === 'boss';
   const d = isBoss
-    ? { hp: 150, speed: 31, reward: 75 + waveId * 12, size: 112, dmg: 18 }
+    ? { hp: 300 + waveId * 14, speed: 27, reward: 150 + waveId * 10, size: 124, dmg: 22 }
     : ENEMY[type];
-  const waveHpMul = 1 + (waveId - 1) * (isBoss ? 0.62 : 0.28);
-  const spMul = 1 + (waveId - 1) * (isBoss ? 0.012 : 0.03);
+  // Gradual scaling keeps 20- and 40-wave runs challenging without becoming absurd.
+  const waveHpMul = isBoss ? 1 : 1 + (waveId - 1) * 0.045;
+  const spMul = 1 + (waveId - 1) * 0.008;
   const difficultyHp = isBoss ? difficulty.boss : difficulty.hp;
   const hp = d.hp * waveHpMul * difficultyHp;
   enemies.push({ type, waveId, isBoss, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
     hp, maxHp: hp, speed: d.speed * spMul * difficulty.speed, reward: d.reward, size: d.size,
-    dmg: d.dmg * (isBoss ? (1 + (waveId - 1) * 0.08) : 1), img: isBoss ? 'boss' : type, dir: 1,
-    attackTimer: isBoss ? 2.8 : 0, attackCooldown: isBoss ? 5.5 : 0 });
+    dmg: d.dmg, img: isBoss ? 'boss' : type, dir: 1,
+    attackTimer: isBoss ? 3.2 : 0, attackCooldown: isBoss ? 6.2 : 0 });
 }
 
 /* ================== INPUT ================== */
@@ -1000,10 +994,9 @@ $('btnInventory').onclick = () => { startMenuMusic(); buildInventory(); show('in
 $('btnInventoryBack').onclick = () => { show('menu'); startMenuMusic(); };
 $('btnShopMenu').onclick = () => { startMenuMusic(); buildTowerShop(); show('shopScreen'); };
 $('btnShopBack').onclick = () => { show('menu'); startMenuMusic(); };
-$('grassEasy').onclick = () => { selectedDifficulty = 'easy'; startGame(); };
-$('grassMedium').onclick = () => { selectedDifficulty = 'medium'; startGame(); };
-$('grassHard').onclick = () => { selectedDifficulty = 'hard'; startGame(); };
-['grassEasy', 'grassMedium', 'grassHard'].forEach(id => { const el = $(id); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }); });
+$('difficultyEasy').onclick = () => { selectedDifficulty = 'easy'; MAX_WAVE = DIFFICULTIES.easy.waves; startGame(); };
+$('difficultyMedium').onclick = () => { selectedDifficulty = 'medium'; MAX_WAVE = DIFFICULTIES.medium.waves; startGame(); };
+$('difficultyHard').onclick = () => { selectedDifficulty = 'hard'; MAX_WAVE = DIFFICULTIES.hard.waves; startGame(); };
 $('btnAgain').onclick = startGame;
 $('btnToMenu').onclick = toMenu;
 $('btnMenu').onclick = toMenu;
@@ -1056,7 +1049,7 @@ function update(dt) {
     if (batch.spawnTimer <= 0) {
       spawnEnemy(batch.queue.shift(), batch.id);
       // Keep the existing readable spawn pace for every wave independently.
-      batch.spawnTimer = Math.max(0.7, 1.05 - batch.id * 0.035);
+      batch.spawnTimer = Math.max(0.82, 1.12 - batch.id * 0.006);
     }
   }
 
@@ -1083,11 +1076,11 @@ function update(dt) {
     boss.attackTimer -= dt;
     if (boss.attackTimer <= 0) {
       boss.attackTimer = boss.attackCooldown;
-      const radius = selectedDifficulty === 'hard' ? 178 : selectedDifficulty === 'medium' ? 154 : 135;
+      const radius = selectedDifficulty === 'hard' ? 166 : selectedDifficulty === 'medium' ? 150 : 138;
       let disabledCount = 0;
       for (const tower of towers) {
         if (Math.hypot(tower.x - boss.x, tower.y - boss.y) <= radius) {
-          tower.disabledTimer = Math.max(tower.disabledTimer || 0, selectedDifficulty === 'hard' ? 3.8 : selectedDifficulty === 'medium' ? 3.2 : 2.6);
+          tower.disabledTimer = Math.max(tower.disabledTimer || 0, selectedDifficulty === 'hard' ? 3.0 : selectedDifficulty === 'medium' ? 2.7 : 2.4);
           disabledCount++;
         }
       }
@@ -1133,7 +1126,7 @@ function update(dt) {
             projectile = (t.shotIndex % 2 === 0) ? T.bulletAlt : T.bullet;
           }
           bullets.push({ x: t.x + Math.cos(t.aim) * (T.weaponLen || 0), y: t.y + Math.sin(t.aim) * (T.weaponLen || 0),
-            target: best, angle: t.aim, type: T, projectile, damage: T.damage * (t.buffMultiplier || 1), birthTime: time, phase: Math.random() * Math.PI * 2 });
+            target: best, angle: t.aim, type: T, owner: t, projectile, damage: T.damage * (t.buffMultiplier || 1), birthTime: time, phase: Math.random() * Math.PI * 2 });
         }
       }
     }
@@ -1284,7 +1277,8 @@ function render() {
     }
 
     ctx.save();
-    setHue(T.id === 'dogoda' ? 0 : T.hue);
+    if ((t.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
+    else setHue(T.id === 'dogoda' ? 0 : T.hue);
     ctx.translate(t.x + shakeX, t.y + bop * 20 + shakeY);
     ctx.rotate(t.aim);
     ctx.translate(T.melee ? t.punch * 16 : -t.punch * 6, 0);
@@ -1314,17 +1308,19 @@ function render() {
   for (const e of enemies) {
     const s = e.size;
     const air = e.isBoss ? 0 : Math.abs(Math.sin(time * 7 + e.phase));
-    const hop = e.isBoss ? 0 : air * 8;
-    const sq = e.isBoss ? 0 : (0.5 - air) * 0.2;
+    const hop = e.isBoss ? Math.abs(Math.sin(time * 5.2 + e.phase)) * 2.2 : air * 8;
+    const bossJiggle = e.isBoss ? Math.sin(time * 8.5 + e.phase) : 0;
+    const sq = e.isBoss ? bossJiggle * 0.055 : (0.5 - air) * 0.2;
     if (e.isBoss && e.slamFlash > 0) {
       ctx.save();
       ctx.globalAlpha = Math.min(0.8, e.slamFlash);
       ctx.strokeStyle = '#b8c4cc'; ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.arc(e.x, e.y, (1 - e.slamFlash / 0.75) * (selectedDifficulty === 'hard' ? 178 : selectedDifficulty === 'medium' ? 154 : 135), 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(e.x, e.y, (1 - e.slamFlash / 0.75) * (selectedDifficulty === 'hard' ? 166 : selectedDifficulty === 'medium' ? 150 : 138), 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
     ctx.save();
-    ctx.translate(e.x, e.y + s / 2 - hop);
+    ctx.translate(e.x + (e.isBoss ? Math.sin(time * 10 + e.phase) * 1.8 : 0), e.y + s / 2 - hop);
+    if (e.isBoss) ctx.rotate(bossJiggle * 0.045);
     ctx.scale((1 + sq) * e.flip, 1 - sq);
     drawImg(e.img, -s / 2, -s, s, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : '#d33');
     ctx.restore();
@@ -1358,7 +1354,8 @@ function render() {
     const pulse = isGuitar ? dogodaMotionPulse() : 0;
     ctx.save();
     // Support-only DOGODA never fires projectiles; this renderer remains for ordinary towers.
-    if (isGuitar) ctx.filter = 'none';
+    if (b.owner && (b.owner.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
+    else if (isGuitar) ctx.filter = 'none';
     else setHue(b.type.hue);
     ctx.translate(b.x, b.y);
     const spin = isGuitar ? Math.sin(time * 22 + (b.phase || 0)) * 0.38 + (time - (b.birthTime || time)) * 3.6 : 0;
