@@ -161,6 +161,12 @@
   @keyframes countdownPop { from { transform:scale(.72); opacity:.25; } to { transform:scale(1); opacity:1; } }
   #btnSkipWave.available { border-color:#ffe768; color:#fff3a0; animation:skipReadyPulse .9s ease-in-out infinite alternate; }
   @keyframes skipReadyPulse { from { box-shadow:0 0 0 rgba(255,230,70,0); } to { box-shadow:0 0 16px rgba(255,230,70,.75); } }
+  #promoBox { position:absolute !important; top:14px; right:14px; z-index:8 !important; display:flex; gap:5px; align-items:center; }
+  #promoInput { width:170px; min-width:0; padding:10px 8px; border:3px solid #24180d; background:#fff3d6; color:#24180d; font-family:inherit; font-size:9px; }
+  #promoApply { padding:10px 8px; border:3px solid #24180d; background:#8b5a2b; color:#fff3d6; font-family:inherit; font-size:9px; cursor:pointer; }
+  #promoApply:hover { background:#a06a35; }
+  #summonOptions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:8px 0; max-width:760px; }
+  #summonOptions .rbtn { min-width:190px; margin:3px; font-size:10px; padding:12px; }
 </style>
 </head>
 <body>
@@ -207,6 +213,7 @@
     <img class="tree left" src="images/textures/tree.png" alt="" onerror="this.style.display='none'">
     <img class="tree right" src="images/textures/tree.png" alt="" onerror="this.style.display='none'">
     <canvas id="leafCv" width="960" height="720"></canvas>
+    <div id="promoBox"><input id="promoInput" type="text" maxlength="40" placeholder="PROMO CODE" autocomplete="off"><button id="promoApply" type="button">REDEEM</button></div>
     <h1>PEACE<br>IS SOLD</h1>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
     <button class="rbtn" id="btnPlay">PLAY</button>
@@ -252,7 +259,11 @@
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
     <div style="font-size:10px;line-height:2;color:#fff3d6">ROLL A RANDOM TOWER · DUPLICATES UPGRADE IT</div>
     <div id="summonResult">Spend gems to summon a tower.</div>
-    <button class="rbtn small" id="btnSummon">SUMMON · 35 GEMS</button>
+    <div id="summonOptions">
+      <button class="rbtn" id="summonCommon">COMMON · 75 GEMS</button>
+      <button class="rbtn" id="summonRare">RARE · 175 GEMS</button>
+      <button class="rbtn" id="summonLegendary">LEGENDARY · 350 GEMS</button>
+    </div>
     <div class="row" id="shopCards"></div>
     <button class="rbtn small" id="btnShopBack">BACK</button>
 
@@ -916,14 +927,20 @@ function buildInventory() {
   if(!box.children.length) box.textContent='No towers yet. Go to SUMMON!';
   refreshPlayerXP(); setGemIcons();
 }
-const SUMMON_COST=35;
+const SUMMON_COSTS = { common: 75, rare: 175, legendary: 350 };
+const TOWER_RARITY = { delici: 'COMMON', efe: 'COMMON', max: 'RARE', dogoda: 'LEGENDARY' };
 let summoning = false, revealTimer = null, revealPending = null;
-function summonTower() {
+function summonTower(rarity = 'common') {
   if(summoning) return;
-  if(gems<SUMMON_COST) { flash('NOT ENOUGH GEMS!'); return; }
-  gems-=SUMMON_COST;
-  const pool=[{id:'delici',w:50},{id:'efe',w:26},{id:'dogoda',w:14},{id:'max',w:10}];
-  let roll=Math.random()*pool.reduce((n,x)=>n+x.w,0), picked=pool[0].id;
+  const cost = SUMMON_COSTS[rarity] || SUMMON_COSTS.common;
+  if(gems < cost) { flash('NOT ENOUGH GEMS! NEED ' + cost); return; }
+  const pool = rarity === 'common'
+    ? [{id:'delici',w:50},{id:'efe',w:50}]
+    : rarity === 'rare'
+      ? [{id:'max',w:100}]
+      : [{id:'dogoda',w:100}];
+  gems -= cost;
+  let roll = Math.random() * pool.reduce((n,x)=>n+x.w,0), picked = pool[0].id;
   for(const item of pool){ roll-=item.w; if(roll<=0){picked=item.id;break;} }
   const t=typeOf(picked), duplicate=!!owned[picked];
   if(!duplicate){ owned[picked]=true; towerLevels[picked]=1; }
@@ -934,7 +951,7 @@ function summonTower() {
 }
 function playSummonReveal(t, duplicate) {
   summoning = true;
-  $('btnSummon').disabled = true;
+  ['summonCommon','summonRare','summonLegendary'].forEach(id => { if($(id)) $(id).disabled = true; });
   const ov = $('summonReveal'), box = $('revealBox'), txt = $('revealText'), ok = $('btnRevealOk'), fl = $('revealFlash');
   clearTimeout(revealTimer);
   ov.classList.remove('hidden');
@@ -952,7 +969,7 @@ function playSummonReveal(t, duplicate) {
     box.innerHTML = '';
     box.appendChild(towerCard(t, duplicate ? 'DUPLICATE! LEVEL UP' : 'NEW TOWER!', null, null, false, { noName: true, jiggle: true }));
     txt.className = '';
-    txt.innerHTML = '<span style="color:' + (duplicate ? '#ffcf69' : '#aaff9c') + '">' + (duplicate ? 'DUPLICATE! AUTO UPGRADE' : 'NEW TOWER UNLOCKED!') + '</span>';
+    txt.innerHTML = '<span style="color:' + (duplicate ? '#ffcf69' : '#aaff9c') + '">' + (duplicate ? 'DUPLICATE! AUTO UPGRADE' : 'NEW TOWER UNLOCKED!') + '</span><br><span style="color:#fff36a">RARITY: ' + (TOWER_RARITY[t.id] || 'COMMON') + '</span>';
     revealTimer = setTimeout(() => { ok.classList.remove('hidden'); }, 700);
   }, 1950);
 }
@@ -972,12 +989,16 @@ function buildTowerShop() {
   // Summon pool preview: every tower has the same card dimensions as Towers.
   TOWER_TYPES.filter(t=>t.placeable).forEach(t=>{
     const isOwned=!!owned[t.id];
-    box.appendChild(towerCard(t,isOwned?TICK_HTML:'SUMMON POOL',isOwned?'LEVEL '+towerLevelOf(t.id):'LOCKED',null,true,{ noName: true, jiggle: true }));
+    box.appendChild(towerCard(t,isOwned?TICK_HTML:('SUMMON POOL · '+(TOWER_RARITY[t.id]||'COMMON')),isOwned?'LEVEL '+towerLevelOf(t.id):'LOCKED',null,true,{ noName: true, jiggle: true }));
   });
-  const btn=$('btnSummon'); if(btn) btn.disabled=summoning || gems<SUMMON_COST;
+  [['summonCommon','common'],['summonRare','rare'],['summonLegendary','legendary']].forEach(([id,rarity]) => {
+    const btn=$(id); if(btn) btn.disabled=summoning || gems<SUMMON_COSTS[rarity];
+  });
   setGemIcons(); refreshPlayerXP();
 }
-$('btnSummon').onclick = summonTower;
+$('summonCommon').onclick = () => summonTower('common');
+$('summonRare').onclick = () => summonTower('rare');
+$('summonLegendary').onclick = () => summonTower('legendary');
 
 /* ================== GAME ================== */
 function genCacti() {
@@ -1225,6 +1246,28 @@ $('btnPlay').onclick = () => { startMenuMusic(); show('maps'); };
 $('btnMapBack').onclick = () => { show('menu'); startMenuMusic(); };
 $('btnInventory').onclick = () => { startMenuMusic(); buildInventory(); show('inventory'); };
 $('btnInventoryBack').onclick = () => { show('menu'); startMenuMusic(); };
+// Promo codes are redeemed once per browser save. MAX is unlocked by MAXIMILIAN.
+$('promoApply').onclick = () => {
+  const input = $('promoInput');
+  const code = (input.value || '').trim().toUpperCase();
+  if (!code) return flash('ENTER A PROMO CODE!');
+  let redeemed = [];
+  try { redeemed = JSON.parse(localStorage.getItem('ps_redeemed_codes') || '[]'); } catch(e) {}
+  if (redeemed.includes(code)) return flash('CODE ALREADY USED!');
+  if (code === 'MAXIMILIAN') {
+    owned.max = true;
+    towerLevels.max = Math.max(1, towerLevelOf('max'));
+    gems += 250;
+    redeemed.push(code);
+    try { localStorage.setItem('ps_redeemed_codes', JSON.stringify(redeemed)); } catch(e) {}
+    save(); buildInventory(); buildTowerShop(); buildShop();
+    input.value = '';
+    flash('PROMO SUCCESS! MAX UNLOCKED +250 GEMS!');
+  } else {
+    flash('INVALID PROMO CODE!');
+  }
+};
+$('promoInput').addEventListener('keydown', e => { if(e.key === 'Enter') $('promoApply').click(); });
 $('btnShopMenu').onclick = () => { startMenuMusic(); buildTowerShop(); show('shopScreen'); };
 $('btnShopBack').onclick = () => { if (summoning) return; show('menu'); startMenuMusic(); };
 function pickMap(map, diff) { selectedMap = map; selectedDifficulty = diff; MAX_WAVE = DIFFICULTIES[diff].waves; startGame(); }
