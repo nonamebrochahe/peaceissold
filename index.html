@@ -377,6 +377,49 @@ function stopDogodaMusic() {
 }
 dogodaMusic.addEventListener('error', () => console.error('DOGODA track failed to load. Check audios/dogoda.mp3.', dogodaMusic.error));
 
+// Map music: audios/grassland.mp3 and audios/desert.mp3 play during a run.
+// As soon as a DOGODA is on the field the map music fades out and dogoda.mp3 takes over.
+const MAP_MUSIC_VOLUME = 0.40;   // normal level during a run
+const MAP_MUSIC_DUCKED = 0;      // level while a DOGODA is on the field (0 = fully cut; try 0.05 to keep it barely audible)
+const mapMusicTracks = { grass: new Audio('audios/grassland.mp3'), desert: new Audio('audios/desert.mp3') };
+Object.values(mapMusicTracks).forEach(a => {
+  a.loop = true; a.preload = 'auto'; a.volume = 0;
+  a.addEventListener('error', () => console.error('Map music failed to load. Check the audios folder:', a.src));
+});
+let mapMusicActive = null, mapMusicLevel = 0, dogodaTrackFailed = false;
+dogodaMusic.addEventListener('error', () => { dogodaTrackFailed = true; });
+function startMapMusic() {
+  stopMapMusic();
+  mapMusicActive = mapMusicTracks[selectedMap] || mapMusicTracks.grass;
+  mapMusicLevel = MAP_MUSIC_VOLUME;
+  mapMusicActive.volume = mapMusicLevel;
+  try { mapMusicActive.currentTime = 0; } catch (e) {}
+  const attempt = mapMusicActive.play();
+  if (attempt && attempt.catch) attempt.catch(err => console.warn('Map music could not start:', err));
+}
+function stopMapMusic() {
+  if (mapMusicActive) {
+    mapMusicActive.pause();
+    try { mapMusicActive.currentTime = 0; } catch (e) {}
+  }
+  mapMusicActive = null;
+  mapMusicLevel = 0;
+}
+function updateMapMusic(dt) {
+  if (!mapMusicActive || !running) return;
+  const hasDogoda = !dogodaTrackFailed && Array.isArray(towers) && towers.some(t => t.type && t.type.id === 'dogoda');
+  const target = hasDogoda ? MAP_MUSIC_DUCKED : MAP_MUSIC_VOLUME;
+  const step = MAP_MUSIC_VOLUME * dt / 1.2; // ~1.2 second fade
+  mapMusicLevel += Math.max(-step, Math.min(step, target - mapMusicLevel));
+  mapMusicActive.volume = Math.max(0, Math.min(1, mapMusicLevel));
+  if (mapMusicLevel <= 0.001) {
+    if (!mapMusicActive.paused) mapMusicActive.pause();
+  } else if (mapMusicActive.paused) {
+    const attempt = mapMusicActive.play();
+    if (attempt && attempt.catch) attempt.catch(() => {});
+  }
+}
+
 // DOGODA visual rhythm: use the actual song's low-frequency energy when Web Audio
 // is available, with a small song-clock metronome pulse as a fallback.
 const DOGODA_METRONOME_BPM = 120; // fallback only; live bass transients drive the main beat
@@ -1296,11 +1339,13 @@ function startGame() {
   stopDogodaMusic();
   SCREEN_IDS.forEach(s => $(s).classList.add('hidden'));
   running = true; reset();
+  startMapMusic(); // the click that started the run unlocks audio
   startWave();
 }
 function toMenu() {
   running = false;
   stopDogodaMusic();
+  stopMapMusic();
   waveCountdownRemaining = 0;
   waveCountdownLastNumber = 0;
   setWaveCountdown('');
@@ -1312,6 +1357,7 @@ function toMenu() {
 function endGame(win) {
   running = false;
   stopDogodaMusic();
+  stopMapMusic();
   waveCountdownRemaining = 0;
   waveCountdownLastNumber = 0;
   setWaveCountdown('');
@@ -1328,6 +1374,7 @@ function endGame(win) {
 function update(dt) {
   updateWaveCountdown(dt);
   updateDogodaRhythm(dt);
+  updateMapMusic(dt);
   for (const f of floatTexts) { f.y -= 34 * dt; f.life -= dt; }
   floatTexts = floatTexts.filter(f => f.life > 0);
   syncSkipWaveButton();
