@@ -49,6 +49,7 @@
   .dogoda-shop-preview .preview-guitar { width:60px; height:38px; left:22px; top:18px; right:auto; bottom:auto; z-index:3; transform:rotate(-28deg); transform-origin:center; }
 
   #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(61,40,25,.94); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
+  #info select { border:3px solid #000; }
   #info .hbtn { margin: 6px 6px 0 0; font-size: 9px; padding: 8px; }
 
   .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -161,7 +162,7 @@
   @keyframes countdownPop { from { transform:scale(.72); opacity:.25; } to { transform:scale(1); opacity:1; } }
   #btnSkipWave.available { border-color:#ffe768; color:#fff3a0; animation:skipReadyPulse .9s ease-in-out infinite alternate; }
   @keyframes skipReadyPulse { from { box-shadow:0 0 0 rgba(255,230,70,0); } to { box-shadow:0 0 16px rgba(255,230,70,.75); } }
-  #promoBox { position:absolute !important; top:14px; right:14px; z-index:8 !important; display:flex; gap:5px; align-items:center; }
+  #promoBox { position:absolute !important; top:14px; left:14px; right:auto; z-index:8 !important; display:flex; gap:5px; align-items:center; }
   #promoInput { width:170px; min-width:0; padding:10px 8px; border:3px solid #24180d; background:#fff3d6; color:#24180d; font-family:inherit; font-size:9px; }
   #promoApply { padding:10px 8px; border:3px solid #24180d; background:#8b5a2b; color:#fff3d6; font-family:inherit; font-size:9px; cursor:pointer; }
   #promoApply:hover { background:#a06a35; }
@@ -201,6 +202,7 @@
     <div id="iName" style="color:#fd0"></div>
     <div id="iDmg"></div>
     <div id="iRng"></div>
+    <label style="display:block;margin-top:8px;font-size:9px">TARGET</label><select id="iTarget" style="width:100%;padding:7px;background:#fff3d6;color:#24180d;font-family:inherit;font-size:9px"><option value="closest">CLOSEST</option><option value="leastHealth">LEAST HEALTH</option><option value="strongest">STRONGEST</option><option value="first">FIRST</option><option value="last">LAST</option></select>
     <button class="hbtn" id="btnUp">UPGRADE</button>
     <button class="hbtn" id="btnSell" style="background:#b8541d">SELL</button>
     <button class="hbtn" id="btnClose" style="background:#c33">X</button>
@@ -214,7 +216,7 @@
     <img class="tree left" src="images/textures/tree.png" alt="" onerror="this.style.display='none'">
     <img class="tree right" src="images/textures/tree.png" alt="" onerror="this.style.display='none'">
     <canvas id="leafCv" width="960" height="720"></canvas>
-    <div id="promoBox"><input id="promoInput" type="text" maxlength="40" placeholder="PROMO CODE" autocomplete="off"><button id="promoApply" type="button">REDEEM</button></div>
+    <div id="promoBox"><input id="promoInput" type="text" maxlength="40" placeholder="PROMO: 2XGEMS / 2XBOOST" autocomplete="off"><button id="promoApply" type="button">REDEEM</button></div>
     <h1>PEACE<br>IS SOLD</h1>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
     <button class="rbtn" id="btnPlay">PLAY</button>
@@ -712,6 +714,12 @@ let floatTexts = [];
 
 /* ================== SAVE (gems + inventory) ================== */
 let gems = 0, owned = { delici: true }, towerLevels = { delici: 1 }, playerXP = 0, playerLevel = 1;
+let gemBoostUntil = 0, attackBoostUntil = 0;
+try { gemBoostUntil = Number(localStorage.getItem('ps_gem_boost_until')) || 0; attackBoostUntil = Number(localStorage.getItem('ps_attack_boost_until')) || 0; } catch(e) {}
+function gemMultiplier() { return Date.now() < gemBoostUntil ? 2 : 1; }
+function attackMultiplier() { return Date.now() < attackBoostUntil ? 2 : 1; }
+function saveBoosts() { try { localStorage.setItem('ps_gem_boost_until', gemBoostUntil); localStorage.setItem('ps_attack_boost_until', attackBoostUntil); } catch(e) {} }
+function boostLabel(until) { const left = Math.max(0, until - Date.now()); if (!left) return 'EXPIRED'; const mins = Math.ceil(left/60000); return Math.floor(mins/60)+'H '+(mins%60)+'M LEFT'; }
 try {
   gems = parseInt(localStorage.getItem('ps_gems'), 10) || 0;
   owned = Object.assign({ delici: true }, JSON.parse(localStorage.getItem('ps_inventory') || localStorage.getItem('ps_deck') || '{}'));
@@ -913,6 +921,7 @@ function refreshInfo() {
     : T.support ? 'SUPPORT ONLY · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK'
     : 'DAMAGE: ' + (Math.round(T.damage * 10) / 10) + (T.twin ? ' x2' : '');
   $('iRng').textContent = T.farm ? 'NO ATTACK' : T.support ? 'BUFF RANGE: ' + T.supportRange : 'RANGE: ' + Math.round(T.range);
+  const targetSelect = $('iTarget'); targetSelect.value = selTower.targetMode || 'closest'; targetSelect.disabled = !!(T.farm || T.support);
   const up = $('btnUp');
   if (T.upgrade) {
     const U = typeOf(T.upgrade);
@@ -935,6 +944,7 @@ $('btnUp').onclick = () => {
   hud();
 };
 $('btnClose').onclick = () => { selTower = null; refreshInfo(); };
+$('iTarget').onchange = () => { if (selTower) { selTower.targetMode = $('iTarget').value; flash('TARGET: '+$('iTarget').selectedOptions[0].text); } };
 
 /* ================== SELL ================== */
 const SELL_REFUND = 0.6; // you get 60% of everything you spent on the tower (build + upgrades)
@@ -1326,7 +1336,15 @@ $('promoApply').onclick = () => {
   let redeemed = [];
   try { redeemed = JSON.parse(localStorage.getItem('ps_redeemed_codes') || '[]'); } catch(e) {}
   if (redeemed.includes(code)) return flash('CODE ALREADY USED!');
-  if (code === 'MAXIMILIAN') {
+  if (code === '2XGEMS' || code === 'GEMS2X') {
+    gemBoostUntil = Math.max(Date.now(), gemBoostUntil) + 3 * 60 * 60 * 1000;
+    saveBoosts(); redeemed.push(code); try { localStorage.setItem('ps_redeemed_codes', JSON.stringify(redeemed)); } catch(e) {}
+    input.value = ''; flash('2X GEMS · 3 HOURS!');
+  } else if (code === '2XBOOST' || code === 'BOOST2X') {
+    attackBoostUntil = Math.max(Date.now(), attackBoostUntil) + 3 * 60 * 60 * 1000;
+    saveBoosts(); redeemed.push(code); try { localStorage.setItem('ps_redeemed_codes', JSON.stringify(redeemed)); } catch(e) {}
+    input.value = ''; flash('2X BOOST · 3 HOURS!');
+  } else if (code === 'MAXIMILIAN') {
     owned.max = true;
     towerLevels.max = Math.max(1, towerLevelOf('max'));
     gems += 250;
@@ -1383,7 +1401,7 @@ function endGame(win) {
   waveCountdownLastNumber = 0;
   setWaveCountdown('');
   startMenuMusic();
-  earnedGems = Math.floor(wave * 3 + (win ? 25 : 0) + (win ? baseHp / 10 : 0));
+  earnedGems = Math.floor((wave * 3 + (win ? 25 : 0) + (win ? baseHp / 10 : 0)) * gemMultiplier());
   gems += earnedGems; playerXP += Math.max(10, wave * 4 + (win ? 100 : 0)); updatePlayerLevel(); save();
   $('earned').textContent = earnedGems;
   $('endTitle').textContent = win ? 'YOU WIN!' : 'GAME OVER';
@@ -1464,18 +1482,21 @@ function update(dt) {
     // Support-only towers such as DOGODA never target enemies or create bullets.
     if (T.support || T.farm) { t.aim = 0; t.cd = 0; continue; }
     t.cd -= dt;
-    let best = null, bd = T.range;
-    for (const e of enemies) {
-      const d = Math.hypot(e.x - t.x, e.y - t.y);
-      if (d < bd) { bd = d; best = e; }
-    }
+    let best = null;
+    const mode = t.targetMode || 'closest';
+    const inRange = enemies.filter(e => Math.hypot(e.x - t.x, e.y - t.y) <= T.range);
+    if (mode === 'leastHealth') best = inRange.reduce((a,e) => !a || e.hp < a.hp ? e : a, null);
+    else if (mode === 'strongest') best = inRange.reduce((a,e) => !a || (e.maxHp || e.hp) > (a.maxHp || a.hp) ? e : a, null);
+    else if (mode === 'first') best = inRange.reduce((a,e) => !a || (e.pathProgress || 0) > (a.pathProgress || 0) ? e : a, null);
+    else if (mode === 'last') best = inRange.reduce((a,e) => !a || (e.pathProgress || 0) < (a.pathProgress || 0) ? e : a, null);
+    else best = inRange.reduce((a,e) => { const da=Math.hypot(e.x-t.x,e.y-t.y), db=a?Math.hypot(a.x-t.x,a.y-t.y):Infinity; return da<db?e:a; }, null);
     if (best) {
       const ang = Math.atan2(best.y - t.y, best.x - t.x);
       let d = ang - t.aim;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       t.aim += d * Math.min(1, dt * 14);
       if (t.cd <= 0) {
-        t.cd = T.cooldown / (t.buffMultiplier || 1);
+        t.cd = T.cooldown / ((t.buffMultiplier || 1) * attackMultiplier());
         t.punch = 1;
         if (T.melee) best.hp -= T.damage * (t.buffMultiplier || 1);
         else {
