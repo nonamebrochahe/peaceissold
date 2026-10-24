@@ -72,6 +72,16 @@
   .tower-level { color:#fff36a; font-size:10px; margin:5px 0; }
   .card-status { display:block; color:#b8ef9a; font-size:9px; line-height:1.6; margin-top:2px; }
   .tick { display:inline-block; color:#7dff6a; font-family:Arial, Helvetica, sans-serif; font-size:22px; font-weight:bold; line-height:1; text-shadow:2px 2px 0 #000; }
+  /* Summon sprites jiggle (squash & stretch) like they do in the game. */
+  .card.jiggle .ico { transform-origin:50% 100%; animation:jiggle .75s ease-in-out infinite; }
+  @keyframes jiggle {
+    0%   { transform:scale(1,1) rotate(0deg); }
+    20%  { transform:scale(1.10,.90) rotate(-5deg); }
+    40%  { transform:scale(.92,1.10) rotate(0deg); }
+    60%  { transform:scale(1.10,.90) rotate(5deg); }
+    80%  { transform:scale(.94,1.07) rotate(0deg); }
+    100% { transform:scale(1,1) rotate(0deg); }
+  }
   /* Player level sits at the very bottom of the screen content. */
   .xp-panel { width:min(420px,90%); margin:14px 0 0; padding:10px; border:4px solid #24180d; background:rgba(0,0,0,.38); font-size:10px; line-height:2; }
   .xp-track { width:100%; height:12px; border:2px solid #000; background:#302014; margin-top:4px; }
@@ -821,13 +831,14 @@ function towerPreviewHTML(t) {
     ? '<div class="ico dogoda-shop-preview" style="width:96px;height:72px;margin:0 auto 5px;flex:none"><img class="preview-body" src="' + IMG.dogoda + '" alt="DOGODA"><img class="preview-amp" src="' + IMG.ampProjectile + '" alt="AMP"><img class="preview-guitar" src="' + IMG.guitar + '" alt="GUITAR"></div>'
     : '<div class="ico" style="width:72px;height:72px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center;margin:0 auto 5px;' + iconStyle + '"></div>';
 }
-function towerCard(t, statusHTML, buttonLabel, onBuy, disabled=false) {
+function towerCard(t, statusHTML, buttonLabel, onBuy, disabled=false, opts={}) {
   const c = document.createElement('div');
-  c.className = 'card';
+  c.className = 'card' + (opts.jiggle ? ' jiggle' : '');
   c.style.cursor = 'default';
   const level = towerLevelOf(t.id);
-  c.innerHTML = towerPreviewHTML(t) + '<strong>' + t.name + '</strong><div class="tower-level">LEVEL ' + level + '</div>' +
+  c.innerHTML = towerPreviewHTML(t) + (opts.noName ? '' : '<strong>' + t.name + '</strong>') + '<div class="tower-level">LEVEL ' + level + '</div>' +
     '<span class="card-status">' + statusHTML + '</span>';
+  if (opts.jiggle) { const ico = c.querySelector('.ico'); if (ico) ico.style.animationDelay = (-Math.random() * 0.75).toFixed(2) + 's'; }
   if (buttonLabel) {
     const b = document.createElement('button'); b.className='hbtn'; b.style.cssText='margin:8px 0 0;font-size:9px;padding:8px 6px;flex:none';
     b.textContent=buttonLabel; b.disabled=disabled; b.onclick=onBuy; c.appendChild(b);
@@ -845,7 +856,7 @@ function upgradeCollectionTower(id) {
 function buildInventory() {
   const box=$('inventoryCards'); if(!box) return; box.innerHTML='';
   const list=TOWER_TYPES.filter(t=>t.placeable && owned[t.id]);
-  list.forEach(t=>box.appendChild(towerCard(t,TICK_HTML,'UPGRADE · '+(25+towerLevelOf(t.id)*20)+' G',()=>upgradeCollectionTower(t.id),towerLevelOf(t.id)>=20 || gems < 25+towerLevelOf(t.id)*20)));
+  list.forEach(t=>box.appendChild(towerCard(t,'','UPGRADE · '+(25+towerLevelOf(t.id)*20)+' G',()=>upgradeCollectionTower(t.id),towerLevelOf(t.id)>=20 || gems < 25+towerLevelOf(t.id)*20)));
   if(!box.children.length) box.textContent='No towers yet. Go to SUMMON!';
   refreshPlayerXP(); setGemIcons();
 }
@@ -883,7 +894,7 @@ function playSummonReveal(t, duplicate) {
     fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
     box.className = 'revealed';
     box.innerHTML = '';
-    box.appendChild(towerCard(t, duplicate ? 'DUPLICATE! LEVEL UP' : 'NEW TOWER!', null));
+    box.appendChild(towerCard(t, duplicate ? 'DUPLICATE! LEVEL UP' : 'NEW TOWER!', null, null, false, { noName: true, jiggle: true }));
     txt.className = '';
     txt.innerHTML = '<span style="color:' + (duplicate ? '#ffcf69' : '#aaff9c') + '">' + (duplicate ? 'DUPLICATE! AUTO UPGRADE' : 'NEW TOWER UNLOCKED!') + '</span>';
     revealTimer = setTimeout(() => { ok.classList.remove('hidden'); }, 700);
@@ -896,7 +907,7 @@ function closeSummonReveal() {
   revealPending = null;
   $('summonReveal').classList.add('hidden');
   summoning = false;
-  $('summonResult').innerHTML = '<span style="color:'+(duplicate?'#ffcf69':'#aaff9c')+'">'+(duplicate?'DUPLICATE! AUTO UPGRADE':'NEW TOWER UNLOCKED!')+'</span><br><strong>'+t.name+' · LEVEL '+towerLevelOf(t.id)+'</strong>';
+  $('summonResult').innerHTML = '<span style="color:'+(duplicate?'#ffcf69':'#aaff9c')+'">'+(duplicate?'DUPLICATE! AUTO UPGRADE':'NEW TOWER UNLOCKED!')+'</span><br><strong>LEVEL '+towerLevelOf(t.id)+'</strong>';
   buildInventory(); buildTowerShop(); buildShop();
 }
 $('btnRevealOk').onclick = closeSummonReveal;
@@ -905,7 +916,7 @@ function buildTowerShop() {
   // Summon pool preview: every tower has the same card dimensions as Towers.
   TOWER_TYPES.filter(t=>t.placeable).forEach(t=>{
     const isOwned=!!owned[t.id];
-    box.appendChild(towerCard(t,isOwned?TICK_HTML:'SUMMON POOL',isOwned?'LEVEL '+towerLevelOf(t.id):'LOCKED',null,true));
+    box.appendChild(towerCard(t,isOwned?TICK_HTML:'SUMMON POOL',isOwned?'LEVEL '+towerLevelOf(t.id):'LOCKED',null,true,{ noName: true, jiggle: true }));
   });
   const btn=$('btnSummon'); if(btn) btn.disabled=summoning || gems<SUMMON_COST;
   setGemIcons(); refreshPlayerXP();
