@@ -436,7 +436,7 @@ function dogodaMotionPulse() {
   const period = 60 / DOGODA_METRONOME_BPM;
   const phase = ((songTime % period) + period) % period / period;
   const metronome = Math.pow(Math.max(0, Math.cos(phase * Math.PI * 2)), 18);
-  return Math.max(dogodaBeatPulse, metronome * (dogodaMusic.paused ? 0.42 : 0.16));
+  return dogodaMusic.paused ? 0 : Math.max(dogodaBeatPulse, metronome * 0.16);
 }
 
 // Wait for the menu background/cloud and audio to load, then reveal NEXT.
@@ -1105,7 +1105,9 @@ function update(dt) {
   for (const batch of waveBatches) {
     if (!batch.queue.length && !enemies.some(enemy => enemy.waveId === batch.id)) {
       batch.completed = true;
-      money += 15 + batch.id * 3;
+      const waveGoldReward = 25 + batch.id * 10;
+      money += waveGoldReward;
+      flash('WAVE ' + batch.id + ' CLEARED! +' + waveGoldReward + ' GOLD');
       completedAny = true;
     }
   }
@@ -1198,15 +1200,15 @@ function render() {
       const ampVolume = !dogodaMusic.paused && dogodaAnalyser
         ? Math.max(dogodaVolumeLevel, dogodaBeatPulse * 0.28)
         : musicPulse * 0.52;
-      const ampShakeX = Math.sin(time * 36 + t.tx) * (1.2 + ampVolume * 4.2);
-      const ampShakeY = Math.sin(time * 47 + t.ty) * (0.8 + ampVolume * 3.0) - musicPulse * 1.5;
-      const ampStretchX = 1.0 + ampVolume * 0.25;
-      const ampStretchY = 1.0 + ampVolume * 0.20 + dogodaBeatPulse * 0.08;
+      const ampShakeX = Math.sin(time * 36 + t.tx) * (ampVolume * 4.8);
+      const ampShakeY = Math.sin(time * 47 + t.ty) * (ampVolume * 3.4) - musicPulse * 2.0;
+      const ampStretchX = 1.0 + ampVolume * 0.32;
+      const ampStretchY = 1.0 + ampVolume * 0.24 + dogodaBeatPulse * 0.10;
       ctx.save();
       ctx.filter = 'none';
       ctx.translate(t.x - s * 0.96 - propShake + ampShakeX,
                     t.y + s * 0.08 + shakeY + ampShakeY + propBounce * 0.35);
-      ctx.rotate(Math.sin(phase * 0.7 + time * 2) * (0.018 + ampVolume * 0.075));
+      ctx.rotate(Math.sin(phase * 0.7 + time * 2) * ampVolume * 0.10);
       ctx.scale(ampStretchX, ampStretchY);
       // Nearly twice the former size, with its bottom aligned to the ground.
       drawImg('ampProjectile', -s * 0.48, -s * 0.44, s * 0.96, s * 0.88, '#68452b');
@@ -1217,8 +1219,8 @@ function render() {
       ctx.filter = 'none';
       ctx.translate(t.x + s * 0.08 + shakeX + propShake * 0.45,
                     t.y - s * 0.04 + shakeY + propBounce * 0.45);
-      ctx.rotate(-0.48 + Math.sin(phase + 0.8) * (0.025 + musicPulse * 0.12));
-      drawImg('guitar', -s * 0.53, -s * 0.30, s * 1.06, s * 0.60, '#e7b63c');
+      ctx.rotate(-0.72 + Math.sin(phase + 0.8) * (0.018 + musicPulse * 0.075));
+      drawImg('guitar', -s * 0.72, -s * 0.34, s * 1.44, s * 0.68, '#e7b63c');
       ctx.restore();
     }
 
