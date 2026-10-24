@@ -290,6 +290,7 @@ const IMG = {
   deli:       'images/projectiles/deli.png',
   delice:     'images/towers/delici.png',
   dolten:     'images/towers/dolten.png', // DOLTEN uses its original, untinted sprite
+  dolten2:    'images/towers/dolten2.png', // optional: falls back to dolten.png if missing
   efe:        'images/towers/efe.png',
   dogoda:     'images/towers/dogoda.png',
   guitar:     'images/projectiles/guitar.png',
@@ -610,9 +611,13 @@ const TOWER_TYPES = [
   { id: 'delici', name: 'DELICI', cost: 50, range: 170, cooldown: 0.65, damage: 2, bulletSpeed: 520, bulletSize: 12,
     size: 56, weaponLen: 44, body: 'delice', weapon: 'atardeli', bullet: 'deli', hue: 0, upgrade: 'dolten', upCost: 90, placeable: true,
     description: 'Balanced starter tower.' },
-  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 225, cooldown: 0.40, damage: 5, bulletSpeed: 640, bulletSize: 16,
-    size: 82, weaponLen: 58, body: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false, twin: true, base: 'delici',
-    description: 'Large upgrade of DELICI. Holds two guns and fires in pairs.' },
+  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 225, cooldown: 0.40, damage: 6, bulletSpeed: 640, bulletSize: 16,
+    size: 82, weaponLen: 58, body: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false, base: 'delici', upgrade: 'dolten2', upCost: 160,
+    description: 'Large upgrade of DELICI.' },
+  /* 3rd upgrade: DOLTEN II holds two guns and fires in pairs. Uses images/towers/dolten2.png if it exists, otherwise dolten.png. */
+  { id: 'dolten2', name: 'DOLTEN II', cost: 0, range: 240, cooldown: 0.36, damage: 5.5, bulletSpeed: 680, bulletSize: 18,
+    size: 92, weaponLen: 64, body: 'dolten2', fb: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false, twin: true, base: 'delici',
+    description: 'Final upgrade. Two guns, fires in pairs.' },
   { id: 'efe', name: 'EFE', cost: 70, range: 80, cooldown: 0.4, damage: 3.5, melee: true,
     size: 58, weaponLen: 34, body: 'efe', fb: 'delice', fbHue: 90, weapon: 'knife', hue: 0, placeable: true, gemCost: 40,
     description: 'Close-range melee tower.' },
