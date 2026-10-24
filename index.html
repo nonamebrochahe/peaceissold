@@ -217,13 +217,22 @@
 
   <!-- ONE MAP, THREE DIFFICULTY OPTIONS -->
   <div class="screen hidden" id="maps">
-    <h2>SELECT DIFFICULTY</h2>
-    <div class="card grassland-card" style="width:360px;cursor:default">
-      <div class="pic" id="grassPic"></div>
-      <div style="font-size:16px;color:#fff3d6;margin:8px 0 16px">GRASSLAND</div>
-      <button class="rbtn small difficulty-btn" id="difficultyEasy" style="border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
-      <button class="rbtn small difficulty-btn" id="difficultyMedium" style="border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
-      <button class="rbtn small difficulty-btn" id="difficultyHard" style="border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
+    <h2>SELECT MAP</h2>
+    <div class="row" style="gap:20px;flex-wrap:nowrap">
+      <div class="card map-card" style="width:380px;cursor:default;margin:0">
+        <div class="pic" id="grassPic" style="height:100px"></div>
+        <div style="font-size:16px;color:#fff3d6;margin:6px 0 10px">GRASSLAND</div>
+        <button class="rbtn small" id="difficultyEasy" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
+        <button class="rbtn small" id="difficultyMedium" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
+        <button class="rbtn small" id="difficultyHard" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
+      </div>
+      <div class="card map-card" style="width:380px;cursor:default;margin:0">
+        <div class="pic" id="desertPic" style="height:100px"></div>
+        <div style="font-size:16px;color:#fff3d6;margin:6px 0 10px">DESERT</div>
+        <button class="rbtn small" id="desertEasy" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
+        <button class="rbtn small" id="desertMedium" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
+        <button class="rbtn small" id="desertHard" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
+      </div>
     </div>
     <button class="rbtn small" id="btnMapBack">BACK</button>
   </div>
@@ -285,7 +294,21 @@ const IMG = {
   dogoda:     'images/towers/dogoda.png',
   guitar:     'images/projectiles/guitar.png',
   ampProjectile: 'images/projectiles/amp.png',
-  boss: 'images/enemies/boss.png'
+  boss: 'images/enemies/boss.png',
+  // desert map
+  sand:       'images/textures/sand.png',
+  sandpath:   'images/textures/sandpath.png',
+  cactus:     'images/textures/cactus.png',
+  sandity:    'images/enemies/sandity.png',
+  sandity1:   'images/enemies/sandity1.png',
+  sandity2:   'images/enemies/sandity2.png',
+  sandity3:   'images/enemies/sandity3.png',
+  sandboss:   'images/enemies/sandboss.png',
+  sandboss2:  'images/enemies/sandboss2.png',
+  // MAX farm tower (3 stages)
+  max:        'images/towers/max.png',
+  max2:       'images/towers/max2.png',
+  max3:       'images/towers/max3.png'
 };
 
 // Main-menu music. It is intentionally NOT started on page load: the
@@ -382,7 +405,7 @@ function emitDogodaBeat() {
     // Music notes now travel from DOGODA to the regular towers it is boosting.
     // No area rings/circles are needed: the moving notes visualize the support buff.
     for (const target of (towers || [])) {
-      if (target === source || !target.type || target.type.support) continue;
+      if (target === source || !target.type || target.type.support || target.type.farm) continue;
       if (Math.hypot(target.x - source.x, target.y - source.y) > source.type.supportRange) continue;
       const life = 1.05;
       musicParticles.push({
@@ -511,7 +534,11 @@ const loadingAssets = [
   'images/textures/leaves.png', 'images/enemies/greenistan.png', 'images/enemies/redistan.png',
   'images/weapons/atardeli.png', 'images/weapons/knife.png', 'images/projectiles/deli.png',
   'images/towers/delici.png', 'images/towers/dolten.png', 'images/towers/efe.png',
-  'images/towers/dogoda.png', 'images/projectiles/guitar.png', 'images/projectiles/amp.png'
+  'images/towers/dogoda.png', 'images/projectiles/guitar.png', 'images/projectiles/amp.png',
+  'images/textures/sand.png', 'images/textures/sandpath.png', 'images/textures/cactus.png',
+  'images/enemies/sandity.png', 'images/enemies/sandity1.png', 'images/enemies/sandity2.png', 'images/enemies/sandity3.png',
+  'images/enemies/sandboss.png', 'images/enemies/sandboss2.png', 'images/enemies/boss.png',
+  'images/towers/max.png', 'images/towers/max2.png', 'images/towers/max3.png'
 ];
 const loadingScreen = document.getElementById('loadingScreen');
 const loadingStatus = document.getElementById('loadingStatus');
@@ -583,25 +610,43 @@ const TOWER_TYPES = [
   { id: 'delici', name: 'DELICI', cost: 50, range: 170, cooldown: 0.65, damage: 2, bulletSpeed: 520, bulletSize: 12,
     size: 56, weaponLen: 44, body: 'delice', weapon: 'atardeli', bullet: 'deli', hue: 0, upgrade: 'dolten', upCost: 90, placeable: true,
     description: 'Balanced starter tower.' },
-  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 225, cooldown: 0.40, damage: 6, bulletSpeed: 640, bulletSize: 16,
-    size: 82, weaponLen: 58, body: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false,
-    description: 'Large upgrade of DELICI.' },
+  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 225, cooldown: 0.40, damage: 5, bulletSpeed: 640, bulletSize: 16,
+    size: 82, weaponLen: 58, body: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false, twin: true, base: 'delici',
+    description: 'Large upgrade of DELICI. Holds two guns and fires in pairs.' },
   { id: 'efe', name: 'EFE', cost: 70, range: 80, cooldown: 0.4, damage: 3.5, melee: true,
     size: 58, weaponLen: 34, body: 'efe', fb: 'delice', fbHue: 90, weapon: 'knife', hue: 0, placeable: true, gemCost: 40,
     description: 'Close-range melee tower.' },
   { id: 'dogoda', name: 'DOGODA', cost: 250, range: 205, cooldown: 0, damage: 0, bulletSpeed: 0, bulletSize: 0,
     size: 60, weaponLen: 0, body: 'dogoda', weapon: null, bullet: null, hue: 0, placeable: true, gemCost: 100,
     support: true, supportRange: 205, attackBoost: 1.35,
-    description: 'Support-only tower: plays dogoda.mp3 and boosts nearby towers by 35%. It never attacks enemies.' }
+    description: 'Support-only tower: plays dogoda.mp3 and boosts nearby towers by 35%. It never attacks enemies.' },
+  /* MAX: farm tower. Never attacks; pays gold every time a wave ends. MAX -> MAX II -> MAX III */
+  { id: 'max', name: 'MAX', cost: 150, range: 0, cooldown: 0, damage: 0, size: 60, weaponLen: 0, body: 'max', weapon: null, bullet: null, hue: 0,
+    placeable: true, farm: true, income: 30, upgrade: 'max2', upCost: 200, description: 'Farm tower: pays gold after every wave.' },
+  { id: 'max2', name: 'MAX', cost: 0, range: 0, cooldown: 0, damage: 0, size: 68, weaponLen: 0, body: 'max2', weapon: null, bullet: null, hue: 0,
+    placeable: false, farm: true, income: 65, base: 'max', upgrade: 'max3', upCost: 450, description: 'Upgraded farm tower.' },
+  { id: 'max3', name: 'MAX', cost: 0, range: 0, cooldown: 0, damage: 0, size: 76, weaponLen: 0, body: 'max3', weapon: null, bullet: null, hue: 0,
+    placeable: false, farm: true, income: 140, base: 'max', description: 'Final farm tower.' }
 ];
 
 /* Enemies: dmg = % of base health taken when they reach the base */
 const ENEMY = {
   greenistan: { hp: 6,  speed: 78,  reward: 7,  size: 48, dmg: 4 },
-  redistan:   { hp: 15, speed: 105, reward: 13, size: 52, dmg: 8 }
+  redistan:   { hp: 15, speed: 105, reward: 13, size: 52, dmg: 8 },
+  // Desert enemies: SANDITY is its own slow enemy (sandity.png).
+  // The faster one is drawn with a 3-frame walk animation: sandity1.png -> sandity2.png -> sandity3.png.
+  sandity:    { hp: 10, speed: 52,  reward: 8,  size: 50, dmg: 4 },
+  sandity1:   { hp: 14, speed: 108, reward: 14, size: 52, dmg: 7 }
 };
 
 let pathTiles = new Set(), pathPts = [];
+let blockedTiles = new Set(); // cactus tiles: towers cannot be placed here
+let selectedMap = 'grass';
+const MAPS = {
+  grass:  { label: 'GRASSLAND', ground: 'grass', path: 'dirt',     groundFb: '#3d8b37', pathFb: '#8a5a2b', cacti: 0 },
+  desert: { label: 'DESERT',    ground: 'sand',  path: 'sandpath', groundFb: '#d9b36a', pathFb: '#b88a4a', cacti: 4 }
+};
+let floatTexts = [];
 
 /* ================== SAVE (gems + inventory) ================== */
 let gems = 0, owned = { delici: true }, towerLevels = { delici: 1 }, playerXP = 0, playerLevel = 1;
@@ -645,9 +690,12 @@ function setGemIcons() {
     el.style.backgroundImage = images.gems ? 'url(' + IMG.gems + ')' : 'none';
     el.style.backgroundColor = images.gems ? 'transparent' : '#3cf';
   });
-  ['grassPic'].forEach(id => {
+  [['grassPic', 'grass'], ['desertPic', 'sand']].forEach(([id, key]) => {
     const gp = document.getElementById(id);
-    if (gp) gp.style.backgroundImage = images.grass ? 'url(' + IMG.grass + ')' : 'none';
+    if (gp) {
+      gp.style.backgroundImage = images[key] ? 'url(' + IMG[key] + ')' : 'none';
+      if (key === 'sand') gp.style.backgroundColor = '#d9b36a';
+    }
   });
 }
 Object.keys(IMG).forEach(k => {
@@ -739,9 +787,10 @@ function genPath() {
 const typeOf = id => TOWER_TYPES.find(t => t.id === id);
 const towerLevelOf = id => Math.max(1, Number(towerLevels[id]) || 1);
 function scaledTowerType(type) {
-  const level = towerLevelOf(type.id), mul = 1 + (level - 1) * 0.08;
+  const level = towerLevelOf(type.base || type.id), mul = 1 + (level - 1) * 0.08;
   const clone = Object.assign({}, type, { collectionLevel: level });
-  if (!type.support) { clone.damage = type.damage * mul; clone.range = type.range * (1 + (level - 1) * 0.025); }
+  if (type.farm) clone.income = type.income * (1 + (level - 1) * 0.1);
+  else if (!type.support) { clone.damage = type.damage * mul; clone.range = type.range * (1 + (level - 1) * 0.025); }
   if (type.support) clone.attackBoost = type.attackBoost + (level - 1) * 0.025;
   return clone;
 }
@@ -798,8 +847,10 @@ function refreshInfo() {
   const T = selTower.type;
   p.classList.remove('hidden');
   $('iName').textContent = T.name;
-  $('iDmg').textContent = T.support ? 'SUPPORT ONLY · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK' : 'DAMAGE: ' + T.damage;
-  $('iRng').textContent = T.support ? 'BUFF RANGE: ' + T.supportRange : 'RANGE: ' + T.range;
+  $('iDmg').textContent = T.farm ? 'FARM: +' + Math.round(T.income) + ' G / WAVE'
+    : T.support ? 'SUPPORT ONLY · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK'
+    : 'DAMAGE: ' + (Math.round(T.damage * 10) / 10) + (T.twin ? ' x2' : '');
+  $('iRng').textContent = T.farm ? 'NO ATTACK' : T.support ? 'BUFF RANGE: ' + T.supportRange : 'RANGE: ' + Math.round(T.range);
   const up = $('btnUp');
   if (T.upgrade) {
     const U = typeOf(T.upgrade);
@@ -814,7 +865,7 @@ $('btnUp').onclick = () => {
   const T = selTower.type;
   if (money < T.upCost) return flash('Not enough gold!');
   money -= T.upCost;
-  selTower.type = typeOf(T.upgrade);
+  selTower.type = scaledTowerType(typeOf(T.upgrade));
   selTower.punch = 1;
   flash(selTower.type.name + '!');
   hud();
@@ -866,7 +917,7 @@ function summonTower() {
   if(summoning) return;
   if(gems<SUMMON_COST) { flash('NOT ENOUGH GEMS!'); return; }
   gems-=SUMMON_COST;
-  const pool=[{id:'delici',w:55},{id:'efe',w:30},{id:'dogoda',w:15}];
+  const pool=[{id:'delici',w:50},{id:'efe',w:26},{id:'dogoda',w:14},{id:'max',w:10}];
   let roll=Math.random()*pool.reduce((n,x)=>n+x.w,0), picked=pool[0].id;
   for(const item of pool){ roll-=item.w; if(roll<=0){picked=item.id;break;} }
   const t=typeOf(picked), duplicate=!!owned[picked];
@@ -924,9 +975,20 @@ function buildTowerShop() {
 $('btnSummon').onclick = summonTower;
 
 /* ================== GAME ================== */
+function genCacti() {
+  blockedTiles = new Set();
+  const M = MAPS[selectedMap] || MAPS.grass;
+  let guard = 0;
+  while (blockedTiles.size < M.cacti && guard++ < 1000) {
+    const x = Math.floor(Math.random() * COLS), y = Math.floor(Math.random() * ROWS), k = x + ',' + y;
+    if (!pathTiles.has(k)) blockedTiles.add(k);
+  }
+}
 function reset() {
   stopDogodaMusic();
   genPath();
+  genCacti();
+  floatTexts = [];
   enemies = []; towers = []; bullets = [];
   money = START_MONEY; baseHp = 100; wave = 0;
   waveBatches = []; waveCountdownRemaining = 0; waveCountdownLastNumber = 0;
@@ -1009,10 +1071,42 @@ function syncSkipWaveButton() {
   }
 }
 
+// Skipping pays the wave reward (+ MAX farm income) right away and launches the next wave
+// immediately, with no countdown. The skipped wave keeps spawning/moving but won't pay twice.
 function skipWave() {
   if (!canSkipWave()) return;
-  // Do not clear or pause this wave; simply begin the next wave's placement countdown.
-  startWave();
+  const batch = currentWaveBatch();
+  if (batch) payWaveRewards(batch);
+  launchWave();
+}
+
+function payWaveRewards(batch) {
+  if (batch.paid) return 0;
+  batch.paid = true;
+  let farm = 0;
+  for (const t of towers) {
+    if (!t.type.farm) continue;
+    const inc = Math.round(t.type.income);
+    farm += inc;
+    t.punch = 1;
+    floatTexts.push({ x: t.x, y: t.y - t.type.size, text: '+' + inc, life: 1.4 });
+  }
+  const reward = 25 + batch.id * 10 + farm;
+  money += reward;
+  flash('WAVE ' + batch.id + ' CLEARED! +' + reward + ' GOLD' + (farm ? ' (FARM +' + farm + ')' : ''));
+  hud();
+  return reward;
+}
+
+function pickEnemyType(w) {
+  if (selectedMap === 'desert') {
+    const ew = Math.min(w, 10) + Math.max(0, w - 10) * 0.5;
+    const slowW = Math.max(0.2, 1 - ew * 0.09);
+    const fastW = ew >= 2 ? Math.min(0.8, 0.15 + ew * 0.07) : 0;
+    return Math.random() * (slowW + fastW) < slowW ? 'sandity' : 'sandity1';
+  }
+  const redChance = Math.min(0.15 + w * 0.07 + (selectedDifficulty === 'hard' ? 0.12 : selectedDifficulty === 'medium' ? 0.05 : 0), 0.88);
+  return Math.random() < redChance && w > 1 ? 'redistan' : 'greenistan';
 }
 
 // Only 3, 2, 1 appear. The countdown has its own DOM layer, so tower actions
@@ -1036,8 +1130,7 @@ function launchWave() {
   const queue = [];
   const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
   const n = Math.ceil((6 + wave * 1.5) * difficulty.mobs);
-  const redChance = Math.min(0.15 + wave * 0.07 + (selectedDifficulty === 'hard' ? 0.12 : selectedDifficulty === 'medium' ? 0.05 : 0), 0.88);
-  for (let i = 0; i < n; i++) queue.push(Math.random() < redChance && wave > 1 ? 'redistan' : 'greenistan');
+  for (let i = 0; i < n; i++) queue.push(pickEnemyType(wave));
   // The boss appears only in the final wave of the selected difficulty.
   if (wave === MAX_WAVE) queue.push('boss');
   waveBatches.push({
@@ -1045,7 +1138,8 @@ function launchWave() {
     queue,
     spawnTimer: Math.max(0.82, 1.12 - wave * 0.006),
     skipReadyNotified: false,
-    completed: false
+    completed: false,
+    paid: false
   });
   hud();
 }
@@ -1064,8 +1158,10 @@ function updateWaveCountdown(dt) {
 function spawnEnemy(type, waveId) {
   const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
   const isBoss = type === 'boss';
+  const desert = selectedMap === 'desert';
   const d = isBoss
-    ? { hp: 300 + waveId * 14, speed: 27, reward: 150 + waveId * 10, size: 124, dmg: 22 }
+    ? (desert ? { hp: 360 + waveId * 16, speed: 30, reward: 180 + waveId * 10, size: 130, dmg: 24 }
+              : { hp: 300 + waveId * 14, speed: 27, reward: 150 + waveId * 10, size: 124, dmg: 22 })
     : ENEMY[type];
   // Gradual scaling keeps 20- and 40-wave runs challenging without becoming absurd.
   const waveHpMul = isBoss ? 1 : 1 + (waveId - 1) * 0.045;
@@ -1074,7 +1170,9 @@ function spawnEnemy(type, waveId) {
   const hp = d.hp * waveHpMul * difficultyHp;
   enemies.push({ type, waveId, isBoss, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
     hp, maxHp: hp, speed: d.speed * spMul * difficulty.speed, reward: d.reward, size: d.size,
-    dmg: d.dmg, img: isBoss ? 'boss' : type, dir: 1,
+    dmg: d.dmg, img: isBoss ? (desert ? 'sandboss' : 'boss') : type, dir: 1,
+    walkImgs: (isBoss && desert) ? ['sandboss', 'sandboss2'] : (type === 'sandity1' ? ['sandity1', 'sandity2', 'sandity3'] : null),
+    walkFps: (isBoss && desert) ? 3.5 : 9,
     attackTimer: isBoss ? 3.2 : 0, attackCooldown: isBoss ? 6.2 : 0 });
 }
 
@@ -1099,6 +1197,7 @@ cv.addEventListener('click', e => {
   }
   const type = typeOf(selected);
   if (pathTiles.has(tx + ',' + ty)) return flash("Can't build on the path!");
+  if (blockedTiles.has(tx + ',' + ty)) return flash("Can't build on a cactus!");
   if (existing) return flash('There is already a tower here!');
   if (money < type.cost) return flash('Not enough gold!');
   money -= type.cost;
@@ -1123,9 +1222,13 @@ $('btnInventory').onclick = () => { startMenuMusic(); buildInventory(); show('in
 $('btnInventoryBack').onclick = () => { show('menu'); startMenuMusic(); };
 $('btnShopMenu').onclick = () => { startMenuMusic(); buildTowerShop(); show('shopScreen'); };
 $('btnShopBack').onclick = () => { if (summoning) return; show('menu'); startMenuMusic(); };
-$('difficultyEasy').onclick = () => { selectedDifficulty = 'easy'; MAX_WAVE = DIFFICULTIES.easy.waves; startGame(); };
-$('difficultyMedium').onclick = () => { selectedDifficulty = 'medium'; MAX_WAVE = DIFFICULTIES.medium.waves; startGame(); };
-$('difficultyHard').onclick = () => { selectedDifficulty = 'hard'; MAX_WAVE = DIFFICULTIES.hard.waves; startGame(); };
+function pickMap(map, diff) { selectedMap = map; selectedDifficulty = diff; MAX_WAVE = DIFFICULTIES[diff].waves; startGame(); }
+$('difficultyEasy').onclick = () => pickMap('grass', 'easy');
+$('difficultyMedium').onclick = () => pickMap('grass', 'medium');
+$('difficultyHard').onclick = () => pickMap('grass', 'hard');
+$('desertEasy').onclick = () => pickMap('desert', 'easy');
+$('desertMedium').onclick = () => pickMap('desert', 'medium');
+$('desertHard').onclick = () => pickMap('desert', 'hard');
 $('btnAgain').onclick = startGame;
 $('btnToMenu').onclick = toMenu;
 $('btnMenu').onclick = toMenu;
@@ -1169,6 +1272,8 @@ function endGame(win) {
 function update(dt) {
   updateWaveCountdown(dt);
   updateDogodaRhythm(dt);
+  for (const f of floatTexts) { f.y -= 34 * dt; f.life -= dt; }
+  floatTexts = floatTexts.filter(f => f.life > 0);
   syncSkipWaveButton();
 
   // Every wave owns a separate queue. After SKIP WAVE, any previous wave's
@@ -1233,7 +1338,7 @@ function update(dt) {
     if (t.punch < 0.01) t.punch = 0;
     if ((t.disabledTimer || 0) > 0) { t.punch = 0; continue; }
     // Support-only towers such as DOGODA never target enemies or create bullets.
-    if (T.support) { t.aim = 0; t.cd = 0; continue; }
+    if (T.support || T.farm) { t.aim = 0; t.cd = 0; continue; }
     t.cd -= dt;
     let best = null, bd = T.range;
     for (const e of enemies) {
@@ -1255,8 +1360,13 @@ function update(dt) {
             t.shotIndex = (t.shotIndex || 0) + 1;
             projectile = (t.shotIndex % 2 === 0) ? T.bulletAlt : T.bullet;
           }
-          bullets.push({ x: t.x + Math.cos(t.aim) * (T.weaponLen || 0), y: t.y + Math.sin(t.aim) * (T.weaponLen || 0),
-            target: best, angle: t.aim, type: T, owner: t, projectile, damage: T.damage * (t.buffMultiplier || 1), birthTime: time, phase: Math.random() * Math.PI * 2 });
+          // Twin towers (DOLTEN) fire two bullets side by side from their two guns.
+          const offsets = T.twin ? [-10, 10] : [0];
+          for (const off of offsets) {
+            bullets.push({ x: t.x + Math.cos(t.aim) * (T.weaponLen || 0) - Math.sin(t.aim) * off,
+              y: t.y + Math.sin(t.aim) * (T.weaponLen || 0) + Math.cos(t.aim) * off,
+              target: best, angle: t.aim, type: T, owner: t, projectile, damage: T.damage * (t.buffMultiplier || 1), birthTime: time, phase: Math.random() * Math.PI * 2 });
+          }
         }
       }
     }
@@ -1283,9 +1393,7 @@ function update(dt) {
   for (const batch of waveBatches) {
     if (!batch.queue.length && !enemies.some(enemy => enemy.waveId === batch.id)) {
       batch.completed = true;
-      const waveGoldReward = 25 + batch.id * 10;
-      money += waveGoldReward;
-      flash('WAVE ' + batch.id + ' CLEARED! +' + waveGoldReward + ' GOLD');
+      payWaveRewards(batch); // does nothing if the wave was skipped (already paid)
       completedAny = true;
     }
   }
@@ -1316,23 +1424,28 @@ function render() {
   ctx.clearRect(0, 0, cv.width, cv.height);
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     const isPath = pathTiles.has(x + ',' + y);
-    drawImg(isPath ? 'dirt' : 'grass', x * TILE, y * TILE, TILE, TILE, isPath ? '#8a5a2b' : '#3d8b37');
+    const M = MAPS[selectedMap] || MAPS.grass;
+    drawImg(isPath ? M.path : M.ground, x * TILE, y * TILE, TILE, TILE, isPath ? M.pathFb : M.groundFb);
+  }
+  for (const k of blockedTiles) {
+    const [cx, cy] = k.split(',').map(Number);
+    drawImg('cactus', cx * TILE, cy * TILE, TILE, TILE, '#2e7d32');
   }
 
   const mtx = Math.floor(mouse.x / TILE), mty = Math.floor(mouse.y / TILE);
 
   if (running && selected && mouse.x >= 0) {
     const T = typeOf(selected);
-    const ok = !pathTiles.has(mtx + ',' + mty) && !towers.some(t => t.tx === mtx && t.ty === mty) && money >= T.cost;
+    const ok = !pathTiles.has(mtx + ',' + mty) && !blockedTiles.has(mtx + ',' + mty) && !towers.some(t => t.tx === mtx && t.ty === mty) && money >= T.cost;
     ctx.fillStyle = ok ? 'rgba(255,255,255,.25)' : 'rgba(255,0,0,.35)';
     ctx.fillRect(mtx * TILE, mty * TILE, TILE, TILE);
-    if (!T.support) {
+    if (!T.support && !T.farm) {
       ctx.strokeStyle = ok ? 'rgba(255,255,255,.5)' : 'rgba(255,80,80,.5)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(mtx * TILE + TILE / 2, mty * TILE + TILE / 2, T.range, 0, Math.PI * 2); ctx.stroke();
     }
   } else if (running && !selected && mouse.x >= 0) {
     const ht = towers.find(t => t.tx === mtx && t.ty === mty);
-    if (ht && !ht.type.support) {
+    if (ht && !ht.type.support && !ht.type.farm) {
       ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(ht.x, ht.y, ht.type.range, 0, Math.PI * 2); ctx.stroke();
     }
@@ -1343,7 +1456,7 @@ function render() {
     ctx.fillStyle = 'rgba(255,255,0,.2)';
     ctx.fillRect(selTower.tx * TILE, selTower.ty * TILE, TILE, TILE);
     // DOGODA is a supporter, so no attack-range circle is shown for it.
-    if (!selTower.type.support) {
+    if (!selTower.type.support && !selTower.type.farm) {
       ctx.strokeStyle = 'rgba(255,255,0,.8)'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(selTower.x, selTower.y, selTower.type.range, 0, Math.PI * 2); ctx.stroke();
     }
@@ -1415,9 +1528,10 @@ function render() {
     ctx.rotate(t.aim);
     ctx.translate(T.melee ? t.punch * 16 : -t.punch * 6, 0);
     if (T.melee) ctx.rotate(-t.punch * 0.9);
-    const w = (T.weaponLen || 0) + 8, h = 28;
-    if (T.weapon && images[T.weapon]) ctx.drawImage(images[T.weapon], 0, -h / 2, w, h);
-    else if (!T.support) { ctx.fillStyle = '#ccc'; ctx.fillRect(0, -4, w, 8); }
+    const w = (T.weaponLen || 0) + 8, h = T.twin ? 22 : 28;
+    const gunOffsets = T.twin ? [-10, 10] : [0]; // DOLTEN holds two guns
+    if (T.weapon && images[T.weapon]) { for (const o of gunOffsets) ctx.drawImage(images[T.weapon], 0, o - h / 2, w, h); }
+    else if (!T.support && !T.farm) { ctx.fillStyle = '#ccc'; for (const o of gunOffsets) ctx.fillRect(0, o - 4, w, 8); }
     ctx.restore();
   }
 
@@ -1433,6 +1547,18 @@ function render() {
     ctx.fillStyle = particle.color;
     ctx.shadowColor = particle.color; ctx.shadowBlur = 7;
     ctx.fillText(particle.glyph, 0, 0);
+    ctx.restore();
+  }
+
+  // Floating "+gold" from MAX farm towers.
+  for (const f of floatTexts) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, f.life / 0.5));
+    ctx.font = '12px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4; ctx.strokeStyle = '#000';
+    ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillStyle = '#ffd95a'; ctx.fillText(f.text, f.x, f.y);
     ctx.restore();
   }
 
@@ -1454,7 +1580,13 @@ function render() {
     ctx.translate(e.x + (e.isBoss ? Math.sin(time * 10 + e.phase) * 1.8 : 0), e.y + s / 2 - hop);
     if (e.isBoss) ctx.rotate(bossJiggle * 0.045);
     ctx.scale((1 + sq) * e.flip, 1 - sq);
-    drawImg(e.img, -s / 2, -s, s, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : '#d33');
+    // Walk animation: desert boss = sandboss/sandboss2, fast sandity = sandity1/2/3.
+    let imgKey = e.img;
+    if (e.walkImgs) {
+      imgKey = e.walkImgs[Math.floor(time * e.walkFps + e.phase) % e.walkImgs.length];
+      if (!images[imgKey]) imgKey = e.walkImgs[0];
+    }
+    drawImg(imgKey, -s / 2, -s, s, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : e.type.startsWith('sandity') ? '#e0b050' : '#d33');
     ctx.restore();
     if (mouse.x >= 0) {
       const d = Math.hypot(mouse.x - e.x, mouse.y - e.y);
