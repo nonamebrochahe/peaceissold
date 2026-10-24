@@ -49,7 +49,11 @@
   .dogoda-shop-preview .preview-guitar { width:60px; height:38px; left:22px; top:18px; right:auto; bottom:auto; z-index:3; transform:rotate(-28deg); transform-origin:center; }
 
   #info { position: absolute; top: 76px; right: 12px; width: 230px; background: rgba(61,40,25,.94); border: 4px solid #000; padding: 12px; font-size: 10px; line-height: 2; z-index: 6; }
-  #info select { border:3px solid #000; }
+  #info .info-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; }
+  #info #iName { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #info #btnTargetMode { flex:0 0 auto; max-width:116px; padding:6px 8px; border:3px solid #161f35; background:#287d8e; color:#fff3d6; font-family:inherit; font-size:8px; line-height:1.2; cursor:pointer; box-shadow:inset 0 2px 0 #54b9c3; }
+  #info #btnTargetMode:hover { background:#359fb0; }
+  #info #btnTargetMode:disabled { opacity:.4; cursor:not-allowed; }
   #info .hbtn { margin: 6px 6px 0 0; font-size: 9px; padding: 8px; }
 
   .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -199,10 +203,12 @@
 
   <!-- tower info -->
   <div id="info" class="hidden">
-    <div id="iName" style="color:#fd0"></div>
+    <div class="info-head">
+      <div id="iName" style="color:#fd0"></div>
+      <button id="btnTargetMode" type="button" title="Click to change targeting">TARGET: CLOSEST</button>
+    </div>
     <div id="iDmg"></div>
     <div id="iRng"></div>
-    <label style="display:block;margin-top:8px;font-size:9px">TARGET</label><select id="iTarget" style="width:100%;padding:7px;background:#fff3d6;color:#24180d;font-family:inherit;font-size:9px"><option value="closest">CLOSEST</option><option value="leastHealth">LEAST HEALTH</option><option value="strongest">STRONGEST</option><option value="first">FIRST</option><option value="last">LAST</option></select>
     <button class="hbtn" id="btnUp">UPGRADE</button>
     <button class="hbtn" id="btnSell" style="background:#b8541d">SELL</button>
     <button class="hbtn" id="btnClose" style="background:#c33">X</button>
@@ -921,7 +927,13 @@ function refreshInfo() {
     : T.support ? 'SUPPORT ONLY · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK'
     : 'DAMAGE: ' + (Math.round(T.damage * 10) / 10) + (T.twin ? ' x2' : '');
   $('iRng').textContent = T.farm ? 'NO ATTACK' : T.support ? 'BUFF RANGE: ' + T.supportRange : 'RANGE: ' + Math.round(T.range);
-  const targetSelect = $('iTarget'); targetSelect.value = selTower.targetMode || 'closest'; targetSelect.disabled = !!(T.farm || T.support);
+  const targetButton = $('btnTargetMode');
+  const targetModes = ['closest', 'leastHealth', 'strongest', 'first', 'last'];
+  const targetLabels = { closest: 'CLOSEST', leastHealth: 'LEAST HP', strongest: 'STRONGEST', first: 'FIRST', last: 'LAST' };
+  const mode = selTower.targetMode || 'closest';
+  targetButton.textContent = 'TARGET: ' + (targetLabels[mode] || 'CLOSEST');
+  targetButton.disabled = !!(T.farm || T.support);
+  targetButton.title = 'Click to change target priority';
   const up = $('btnUp');
   if (T.upgrade) {
     const U = typeOf(T.upgrade);
@@ -944,7 +956,15 @@ $('btnUp').onclick = () => {
   hud();
 };
 $('btnClose').onclick = () => { selTower = null; refreshInfo(); };
-$('iTarget').onchange = () => { if (selTower) { selTower.targetMode = $('iTarget').value; flash('TARGET: '+$('iTarget').selectedOptions[0].text); } };
+$('btnTargetMode').onclick = () => {
+  if (!selTower || selTower.type.farm || selTower.type.support) return;
+  const modes = ['closest', 'leastHealth', 'strongest', 'first', 'last'];
+  const labels = { closest: 'CLOSEST', leastHealth: 'LEAST HP', strongest: 'STRONGEST', first: 'FIRST', last: 'LAST' };
+  const current = selTower.targetMode || 'closest';
+  selTower.targetMode = modes[(modes.indexOf(current) + 1) % modes.length];
+  $('btnTargetMode').textContent = 'TARGET: ' + labels[selTower.targetMode];
+  flash('TARGET: ' + labels[selTower.targetMode]);
+};
 
 /* ================== SELL ================== */
 const SELL_REFUND = 0.6; // you get 60% of everything you spent on the tower (build + upgrades)
@@ -1091,7 +1111,7 @@ function reset() {
   genCacti();
   floatTexts = [];
   enemies = []; towers = []; bullets = [];
-  money = START_MONEY; baseHp = 100; wave = 0;
+  money = START_MONEY; baseHp = 100; wave = 0; earnedGems = 0;
   waveBatches = []; waveCountdownRemaining = 0; waveCountdownLastNumber = 0;
   musicParticles = []; dogodaBeatPulse = 0; dogodaLastBass = 0; dogodaBassAverage = 0;
   setWaveCountdown('');
@@ -1193,8 +1213,14 @@ function payWaveRewards(batch) {
     floatTexts.push({ x: t.x, y: t.y - t.type.size, text: '+' + inc, life: 1.4 });
   }
   const reward = 20 + batch.id * 5 + farm;
+  const difficultyGemBonus = selectedDifficulty === 'hard' ? 1.5 : selectedDifficulty === 'medium' ? 1.2 : 1;
+  const waveGems = Math.floor((25 + batch.id * 8) * difficultyGemBonus * gemMultiplier());
   money += reward;
-  flash('WAVE ' + batch.id + ' CLEARED! +' + reward + ' GOLD' + (farm ? ' (FARM +' + farm + ')' : ''));
+  gems += waveGems;
+  earnedGems += waveGems;
+  save();
+  floatTexts.push({ x: 480, y: 72, text: '+' + waveGems + ' GEMS', life: 1.8 });
+  flash('WAVE ' + batch.id + ' CLEARED! +' + reward + ' GOLD · +' + waveGems + ' GEMS' + (farm ? ' (FARM +' + farm + ')' : ''));
   hud();
   return reward;
 }
@@ -1426,8 +1452,9 @@ function endGame(win) {
   waveCountdownLastNumber = 0;
   setWaveCountdown('');
   startMenuMusic();
-  earnedGems = Math.floor((wave * 3 + (win ? 25 : 0) + (win ? baseHp / 10 : 0)) * gemMultiplier());
-  gems += earnedGems; playerXP += Math.max(10, wave * 4 + (win ? 100 : 0)); updatePlayerLevel(); save();
+  const finalGemBonus = Math.floor((wave * 5 + (win ? 100 : 0) + (win ? baseHp / 5 : 0)) * gemMultiplier());
+  earnedGems += finalGemBonus;
+  gems += finalGemBonus; playerXP += Math.max(10, wave * 4 + (win ? 100 : 0)); updatePlayerLevel(); save();
   $('earned').textContent = earnedGems;
   $('endTitle').textContent = win ? 'YOU WIN!' : 'GAME OVER';
   selTower = null; refreshInfo();
