@@ -216,7 +216,7 @@
     <img class="tree left" src="images/textures/tree.png" alt="" onerror="this.style.display='none'">
     <img class="tree right" src="images/textures/tree.png" alt="" onerror="this.style.display='none'">
     <canvas id="leafCv" width="960" height="720"></canvas>
-    <div id="promoBox"><input id="promoInput" type="text" maxlength="40" placeholder="PROMO: 2XGEMS / 2XBOOST" autocomplete="off"><button id="promoApply" type="button">REDEEM</button></div>
+    <div id="promoBox"><input id="promoInput" type="text" maxlength="40" placeholder="PROMO CODE" autocomplete="off"><button id="promoApply" type="button">REDEEM</button></div>
     <h1>PEACE<br>IS SOLD</h1>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
     <button class="rbtn" id="btnPlay">PLAY</button>
@@ -1353,6 +1353,31 @@ $('promoApply').onclick = () => {
     save(); buildInventory(); buildTowerShop(); buildShop();
     input.value = '';
     flash('PROMO SUCCESS! MAX UNLOCKED +250 GEMS!');
+  } else if (code === 'GARIPGRIP') {
+    gems += 777;
+    redeemed.push(code);
+    try { localStorage.setItem('ps_redeemed_codes', JSON.stringify(redeemed)); } catch(e) {}
+    save(); input.value = ''; flash('GARIP GRIP! +777 GEMS!');
+  } else if (code === 'GEMGOBLIN') {
+    gems += 500;
+    redeemed.push(code);
+    try { localStorage.setItem('ps_redeemed_codes', JSON.stringify(redeemed)); } catch(e) {}
+    save(); input.value = ''; flash('GEM GOBLIN! +500 GEMS!');
+  } else if (code === 'FREEGEMS') {
+    gems += 250;
+    redeemed.push(code);
+    try { localStorage.setItem('ps_redeemed_codes', JSON.stringify(redeemed)); } catch(e) {}
+    save(); input.value = ''; flash('FREE GEMS! +250 GEMS!');
+  } else if (code === 'GEMRAIN') {
+    gems += 1000;
+    redeemed.push(code);
+    try { localStorage.setItem('ps_redeemed_codes', JSON.stringify(redeemed)); } catch(e) {}
+    save(); input.value = ''; flash('GEM RAIN! +1000 GEMS!');
+  } else if (code === 'BRAINROT') {
+    gems += 420;
+    redeemed.push(code);
+    try { localStorage.setItem('ps_redeemed_codes', JSON.stringify(redeemed)); } catch(e) {}
+    save(); input.value = ''; flash('BRAINROT BONUS! +420 GEMS!');
   } else {
     flash('INVALID PROMO CODE!');
   }
