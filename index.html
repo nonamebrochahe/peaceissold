@@ -202,6 +202,7 @@
     <div id="iDmg"></div>
     <div id="iRng"></div>
     <button class="hbtn" id="btnUp">UPGRADE</button>
+    <button class="hbtn" id="btnSell" style="background:#b8541d">SELL</button>
     <button class="hbtn" id="btnClose" style="background:#c33">X</button>
   </div>
 
@@ -920,18 +921,37 @@ function refreshInfo() {
     up.disabled = money < T.upCost;
     up.title = U.name;
   } else up.classList.add('hidden');
+  $('btnSell').textContent = 'SELL +' + sellValue(selTower) + ' G';
 }
 $('btnUp').onclick = () => {
   if (!selTower || !selTower.type.upgrade) return;
   const T = selTower.type;
   if (money < T.upCost) return flash('Not enough gold!');
   money -= T.upCost;
+  selTower.invested = (selTower.invested || 0) + T.upCost; // upgrades count towards the sell value
   selTower.type = scaledTowerType(typeOf(T.upgrade));
   selTower.punch = 1;
   flash(selTower.type.name + '!');
   hud();
 };
 $('btnClose').onclick = () => { selTower = null; refreshInfo(); };
+
+/* ================== SELL ================== */
+const SELL_REFUND = 0.6; // you get 60% of everything you spent on the tower (build + upgrades)
+function sellValue(t) { return Math.floor(((t && t.invested) || 0) * SELL_REFUND); }
+function sellTower() {
+  if (!running || !selTower) return;
+  const t = selTower, value = sellValue(t);
+  towers = towers.filter(x => x !== t);
+  money += value;
+  selTower = null;
+  floatTexts.push({ x: t.x, y: t.y - t.type.size, text: '+' + value, life: 1.2 });
+  // Selling the last DOGODA stops its song; the map music fades back in by itself.
+  if (t.type.id === 'dogoda' && !towers.some(x => x.type.id === 'dogoda')) stopDogodaMusic();
+  flash('SOLD ' + t.type.name + ' +' + value + ' GOLD');
+  hud();
+}
+$('btnSell').onclick = sellTower;
 
 /* ================== INVENTORY + GEM SHOP ================== */
 // Cards show only: sprite, name, level, and a status (tick when owned). No build cost, no description.
@@ -1278,13 +1298,14 @@ cv.addEventListener('click', e => {
   if (existing) return flash('There is already a tower here!');
   if (money < type.cost) return flash('Not enough gold!');
   money -= type.cost;
-  towers.push({ type: scaledTowerType(type), tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, cd: 0, aim: 0, punch: 0, buffed: false });
+  towers.push({ type: scaledTowerType(type), tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, cd: 0, aim: 0, punch: 0, buffed: false, invested: type.cost });
   if (type.id === 'dogoda') startDogodaMusic();
   hud();
 });
 addEventListener('keydown', e => {
   if (!running) return;
   if (e.key === 'Escape') { selTower = null; refreshInfo(); return selectTower(null); }
+  if (e.key === 'x' || e.key === 'X' || e.key === 'Delete') { sellTower(); return; }
   const list = shopList();
   const i = parseInt(e.key, 10);
   if (i >= 1 && i <= list.length) selectTower(selected === list[i - 1].id ? null : list[i - 1].id);
