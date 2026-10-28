@@ -326,6 +326,179 @@
   #promoInput { width:170px; min-width:0; padding:10px 8px; border:3px solid #24180d; background:#fff3d6; color:#24180d; font-family:inherit; font-size:9px; }
   #promoApply { padding:10px 8px; border:3px solid #24180d; background:#8b5a2b; color:#fff3d6; font-family:inherit; font-size:9px; cursor:pointer; }
   #promoApply:hover { background:#a06a35; }
+
+  /* POLISHED TOWER CARDS + SUMMON REVEAL: centered PNG, level directly below,
+     and less wasted vertical space. Appended as a safe override to preserve gameplay. */
+  #inventoryCards {
+    align-items: stretch;
+    gap: 14px;
+    padding: 12px 14px 16px;
+  }
+  #inventoryCards .card {
+    box-sizing: border-box;
+    padding: 12px 10px 14px;
+    gap: 0;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(139,93,53,.98), rgba(77,47,27,.98));
+    border: 4px solid #24180d;
+    box-shadow: inset 0 0 0 2px rgba(255,220,160,.16), 4px 4px 0 rgba(0,0,0,.28);
+  }
+  #inventoryCards .card > .ico,
+  #inventoryCards .card > .dogoda-shop-preview {
+    position: relative;
+    display: block;
+    flex: 0 0 100px !important;
+    width: 100px !important;
+    height: 100px !important;
+    margin: 0 auto 2px !important;
+    align-self: center;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+  #inventoryCards .card > strong {
+    display: block;
+    width: 100%;
+    margin: 0;
+    line-height: 1.6;
+    text-align: center;
+  }
+  #inventoryCards .card .tower-level {
+    display: block;
+    margin: 1px 0 3px;
+    line-height: 1.5;
+    text-align: center;
+  }
+  #inventoryCards .card .card-status {
+    margin: 0;
+    line-height: 1.5;
+    text-align: center;
+  }
+  #inventoryCards .card > .hbtn {
+    margin-top: auto !important;
+    padding: 8px 5px;
+    max-width: 100%;
+  }
+  /* Keep the multi-part DOGODA sprite centered inside the same preview area. */
+  #inventoryCards .dogoda-shop-preview .preview-body {
+    width: 76px;
+    height: 76px;
+    left: 12px;
+    top: 0;
+  }
+  #inventoryCards .dogoda-shop-preview .preview-amp {
+    width: 48px;
+    height: 46px;
+    left: 0;
+    bottom: 0;
+  }
+  #inventoryCards .dogoda-shop-preview .preview-guitar {
+    width: 62px;
+    height: 40px;
+    left: 30px;
+    top: 22px;
+  }
+  /* Summon result: the PNG and LEVEL stay together as one compact centered group. */
+  #summonReveal #revealStage {
+    height: clamp(180px, 32vh, 270px) !important;
+    min-height: 180px !important;
+    margin: 0 auto 2px !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  #summonReveal #revealBox.revealed {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  #summonReveal .reveal-tower {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    width: max-content;
+    max-width: 90vw;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    text-align: center;
+  }
+  #summonReveal .reveal-tower-sprite {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 190px;
+    height: 170px;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    flex: 0 0 auto;
+    filter: drop-shadow(0 0 18px rgba(255,225,90,.48));
+  }
+  #summonReveal .reveal-tower-sprite > .ico {
+    display: block;
+    width: 150px !important;
+    height: 150px !important;
+    flex: 0 0 150px !important;
+    margin: 0 !important;
+    background-position: center !important;
+    background-size: contain !important;
+  }
+  #summonReveal .reveal-tower-sprite > .dogoda-shop-preview {
+    width: 170px !important;
+    height: 140px !important;
+    flex: 0 0 140px !important;
+    margin: 0 !important;
+  }
+  #summonReveal .reveal-tower-sprite .preview-body {
+    width: 120px;
+    height: 120px;
+    left: 25px;
+    top: 0;
+  }
+  #summonReveal .reveal-tower-sprite .preview-amp {
+    width: 72px;
+    height: 68px;
+    left: 2px;
+    bottom: 0;
+  }
+  #summonReveal .reveal-tower-sprite .preview-guitar {
+    width: 90px;
+    height: 56px;
+    left: 60px;
+    top: 34px;
+  }
+  #summonReveal .reveal-tower .tower-level {
+    margin: -2px auto 0 !important;
+    padding: 5px 12px;
+    color: #fff36a !important;
+    font-size: 12px;
+    line-height: 1.5 !important;
+    text-align: center;
+    background: rgba(36,24,13,.78);
+    border: 2px solid rgba(255,220,100,.55);
+    text-shadow: 2px 2px 0 #000;
+  }
+  #summonReveal #revealText {
+    gap: 2px !important;
+    margin-top: 2px !important;
+  }
+  #summonReveal #btnRevealOk {
+    margin-top: 8px !important;
+  }
+  @media (max-height: 560px) {
+    #summonReveal #revealStage { height: 160px !important; min-height: 160px !important; }
+    #summonReveal .reveal-tower-sprite { height: 125px; }
+    #summonReveal .reveal-tower-sprite > .ico { width: 112px !important; height: 112px !important; flex-basis: 112px !important; }
+  }
+
 </style>
 </head>
 <body>
