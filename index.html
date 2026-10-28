@@ -1740,7 +1740,8 @@ function endGame(win) {
 // Each enemy can be hit once per pass (once going out, once coming back), so it pierces through crowds.
 function updateBoomerang(t, dt) {
   const T = t.type, b = t.boom;
-  b.spin += 20 * dt;
+  // Continuous blade spin, independent of its travel direction.
+  b.spin += 30 * dt;
   const speed = T.bulletSpeed;
   b.prevX = b.x; b.prevY = b.y;
   const gx = b.out ? b.tx : t.x, gy = b.out ? b.ty : t.y;
@@ -1752,6 +1753,12 @@ function updateBoomerang(t, dt) {
   } else {
     b.x += dx / dist * step; b.y += dy / dist * step;
   }
+  // Keep a short, time-based position history so the trail forms a smooth ribbon.
+  if (!b.trail) b.trail = [];
+  b.trail.push({ x: b.x, y: b.y, age: 0 });
+  for (const p of b.trail) p.age += dt;
+  b.trail = b.trail.filter(p => p.age < 0.24);
+  if (b.trail.length > 20) b.trail.splice(0, b.trail.length - 20);
   const dmg = T.damage * (t.buffMultiplier || 1);
   for (const e of enemies) {
     if (e.hp <= 0 || b.hit.has(e)) continue;
@@ -1850,7 +1857,7 @@ function update(dt) {
           t.cd = T.cooldown / ((t.buffMultiplier || 1) * attackMultiplier());
           t.punch = 1;
           // Fly in the target's direction all the way out to the tower's range, so it pierces everything on the line.
-          t.boom = { x: t.x, y: t.y, tx: t.x + Math.cos(ang) * T.range, ty: t.y + Math.sin(ang) * T.range, out: true, spin: ang, hit: new Set() };
+          t.boom = { x: t.x, y: t.y, tx: t.x + Math.cos(ang) * T.range, ty: t.y + Math.sin(ang) * T.range, out: true, spin: 0, trail: [], hit: new Set() };
         }
       } else if (t.cd <= 0) {
         t.cd = T.cooldown / ((t.buffMultiplier || 1) * attackMultiplier());
@@ -2062,30 +2069,58 @@ function render() {
     const sz = Math.max(86, (T.weaponLen || 40) * 1.72);
     ctx.save();
     if ((t.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
-    // Curved rainbow wind streak follows the sword's recent movement.
-    if (Number.isFinite(b.prevX) && Number.isFinite(b.prevY)) {
-      const vx = b.x - b.prevX, vy = b.y - b.prevY;
-      const vl = Math.hypot(vx, vy) || 1, nx = -vy / vl, ny = vx / vl;
-      const tailX = b.x - vx * 5.5, tailY = b.y - vy * 5.5;
-      const grad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
-      grad.addColorStop(0, 'rgba(255,70,220,0)');
-      grad.addColorStop(.35, 'rgba(80,245,255,.45)');
-      grad.addColorStop(.72, 'rgba(255,255,120,.85)');
-      grad.addColorStop(1, 'rgba(255,255,255,.95)');
-      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = grad;
-      ctx.lineCap = 'round'; ctx.lineWidth = 8; ctx.shadowColor = '#62f6ff'; ctx.shadowBlur = 16;
-      ctx.beginPath(); ctx.moveTo(tailX + nx * 8, tailY + ny * 8);
-      ctx.quadraticCurveTo((tailX + b.x) / 2 + nx * 18, (tailY + b.y) / 2 + ny * 18, b.x, b.y); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2.5; ctx.shadowBlur = 5;
-      ctx.beginPath(); ctx.moveTo(tailX - nx * 7, tailY - ny * 7);
-      ctx.quadraticCurveTo((tailX + b.x) / 2 - nx * 12, (tailY + b.y) / 2 - ny * 12, b.x, b.y); ctx.stroke();
+    // Smooth, flowing rainbow trail: layered glow + a tapered multicolour ribbon.
+    const trail = b.trail || [];
+    if (trail.length > 1) {
+      const oldest = trail[0], newest = trail[trail.length - 1];
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      const path = () => {
+        ctx.beginPath();
+        ctx.moveTo(oldest.x, oldest.y);
+        for (let i = 1; i < trail.length - 1; i++) {
+          const p = trail[i], n = trail[i + 1];
+          ctx.quadraticCurveTo(p.x, p.y, (p.x + n.x) * 0.5, (p.y + n.y) * 0.5);
+        }
+        ctx.lineTo(newest.x, newest.y);
+      };
+      const alpha = Math.max(0.15, 1 - newest.age / 0.24);
+      const grad = ctx.createLinearGradient(oldest.x, oldest.y, newest.x, newest.y);
+      grad.addColorStop(0, 'rgba(255,55,190,0.02)');
+      grad.addColorStop(0.18, 'rgba(255,70,100,0.35)');
+      grad.addColorStop(0.36, 'rgba(255,210,65,0.62)');
+      grad.addColorStop(0.54, 'rgba(100,255,125,0.72)');
+      grad.addColorStop(0.72, 'rgba(70,225,255,0.82)');
+      grad.addColorStop(0.88, 'rgba(125,100,255,0.78)');
+      grad.addColorStop(1, 'rgba(255,255,255,0.96)');
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 19;
+      ctx.shadowColor = '#9d7bff'; ctx.shadowBlur = 24;
+      path(); ctx.stroke();
+      ctx.lineWidth = 10;
+      ctx.shadowColor = '#65f5ff'; ctx.shadowBlur = 15;
+      path(); ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,.96)'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 8;
+      path(); ctx.stroke();
+      // Small soft sparks along the wake make it feel like air being cut, not a hard line.
+      for (let i = 2; i < trail.length; i += 4) {
+        const p = trail[i], fade = Math.max(0, 1 - p.age / 0.24);
+        ctx.globalAlpha = fade * 0.72;
+        ctx.fillStyle = i % 2 ? '#7df8ff' : '#ff9ef5';
+        ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.5 + fade * 2.1, 0, Math.PI * 2); ctx.fill();
+      }
       ctx.restore();
     }
     if ((t.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
     ctx.translate(b.x, b.y);
     const vx = b.x - (b.prevX ?? b.x), vy = b.y - (b.prevY ?? b.y);
-    const flightAngle = Math.hypot(vx, vy) > 0.01 ? Math.atan2(vy, vx) : b.spin;
-    ctx.rotate(flightAngle + Math.sin(time * 18) * 0.16);
+    // Spin the sword visibly while it travels; don't lock its blade to the flight vector.
+    ctx.rotate(b.spin + Math.atan2(vy, vx) * 0.12);
     if (im) {
       const iw = im.width || im.naturalWidth || 1, ih = im.height || im.naturalHeight || 1;
       const ratio = iw / ih;
