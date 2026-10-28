@@ -252,6 +252,9 @@
 
   /* SECRET REVEAL (BAKLAVADA): the screen goes black, rainbow question marks appear, then the tower shows up. */
   #secretLayer { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
+  #summonReveal { pointer-events:auto !important; }
+  #summonReveal #revealStage, #summonReveal #revealText { pointer-events:none; }
+  #summonReveal #btnRevealOk { pointer-events:auto !important; }
   #shopScreen > #summonReveal.secret { animation:secretDark 1.3s ease-in both; background:#000; }
   @keyframes secretDark { from { background:rgba(0,0,0,0); } to { background:rgba(0,0,0,1); } }
   #revealBox.secretbox { opacity:0; font-size:150px; line-height:1; color:#f33; text-shadow:6px 6px 0 #000, 0 0 30px rgba(255,255,255,.5);
@@ -1357,6 +1360,12 @@ function playSummonReveal(t, duplicate, kind = 'grass') {
   const secret = t.id === 'baklavada' || TOWER_RARITY[t.id] === 'SECRET';
 
   if (secret) {
+    // Hard failsafe: if any animation/timer fails, reveal the already-awarded tower and restore interaction.
+    secretTimers.push(setTimeout(() => {
+      if (!revealPending) return;
+      clearSecretTimers();
+      showRevealedCard(t, duplicate, true);
+    }, 6500));
     // SECRET reveal: 1) the screen fades to black, 2) a giant rainbow "?" and rainbow question marks pop up all over,
     // 3) a white flash and the secret tower appears with SECRET rarity.
     ov.classList.add('secret');
@@ -1420,18 +1429,15 @@ function closeSummonReveal() {
   buildInventory(); buildTowerShop(); buildShop();
 }
 $('btnRevealOk').onclick = closeSummonReveal;
-// Tap/click the reveal twice quickly to skip the suspense animation.
-// The summon result is already rolled and saved, so skipping never changes the reward.
+// Recovery-friendly reveal controls: one click skips the suspense, and the OK button closes it.
+// The reward is rolled/saved before this overlay appears, so skipping never changes the reward.
 $('summonReveal').addEventListener('click', (event) => {
   if (!revealPending) return;
   if (event.target && event.target.closest && event.target.closest('#btnRevealOk')) return;
-  const now = performance.now();
-  if (now - lastRevealTapAt <= 420) {
-    lastRevealTapAt = 0;
-    if ($('revealBox').classList.contains('revealed')) closeSummonReveal();
-    else fastForwardSummonReveal();
+  if ($('revealBox').classList.contains('revealed')) {
+    closeSummonReveal();
   } else {
-    lastRevealTapAt = now;
+    fastForwardSummonReveal();
   }
 });
 // The summon screen no longer lists towers: it only keeps the two cards enabled/disabled by gems.
