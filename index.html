@@ -179,6 +179,77 @@
   @keyframes dots { 0% { content:""; } 25% { content:"."; } 50% { content:".."; } 75% { content:"..."; } }
   #btnRevealOk { margin-top:10px; }
 
+  /* SUMMON REVEAL LAYOUT FIX: keep every result element in one centered vertical flow.
+     Order is tower -> LEVEL -> duplicate/new status -> RARITY -> OK. */
+  #shopScreen > #summonReveal {
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:0 !important;
+    overflow-y:auto;
+    padding:20px 12px !important;
+    box-sizing:border-box;
+  }
+  #summonReveal #revealStage {
+    position:relative !important;
+    left:auto !important; top:auto !important; bottom:auto !important; right:auto !important;
+    transform:none !important;
+    width:min(92vw,560px) !important;
+    height:clamp(210px,42vh,350px) !important;
+    min-height:210px;
+    flex:0 0 auto !important;
+    margin:0 auto 8px !important;
+  }
+  #summonReveal #revealText {
+    position:relative !important;
+    left:auto !important; top:auto !important; bottom:auto !important; right:auto !important;
+    transform:none !important;
+    width:min(92vw,600px) !important;
+    max-width:600px !important;
+    min-height:0 !important;
+    height:auto !important;
+    flex:0 0 auto !important;
+    margin:0 auto !important;
+    padding:0 8px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:3px !important;
+    text-align:center !important;
+    line-height:1.5 !important;
+    overflow-wrap:anywhere;
+  }
+  #summonReveal #revealText > span {
+    display:block !important;
+    width:100%;
+    line-height:1.5 !important;
+    margin:0 !important;
+  }
+  #summonReveal #btnRevealOk {
+    position:relative !important;
+    left:auto !important; top:auto !important; bottom:auto !important; right:auto !important;
+    transform:none !important;
+    display:block;
+    flex:0 0 auto !important;
+    margin:14px auto 0 !important;
+    min-width:110px;
+    z-index:4 !important;
+  }
+  #summonReveal #btnRevealOk.hidden { display:none !important; }
+  #summonReveal .reveal-tower { gap:4px !important; }
+  #summonReveal .reveal-tower .tower-level {
+    display:block !important;
+    margin:5px 0 0 !important;
+    line-height:1.5 !important;
+  }
+  @media (max-height:560px) {
+    #shopScreen > #summonReveal { justify-content:flex-start !important; }
+    #summonReveal #revealStage { height:200px !important; min-height:200px; }
+    #summonReveal #btnRevealOk { margin-top:8px !important; }
+  }
+
   /* SECRET REVEAL (BAKLAVADA): the screen goes black, rainbow question marks appear, then the tower shows up. */
   #secretLayer { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
   #shopScreen > #summonReveal.secret { animation:secretDark 1.3s ease-in both; background:#000; }
@@ -1245,7 +1316,7 @@ function showRevealedCard(t, duplicate, secret) {
   if (secret) {
     txt.innerHTML = '<span class="rbtext">SECRET TOWER!</span><span><span style="color:#fff36a">RARITY: </span><span class="rbtext">' + rarity + '</span></span>';
   } else {
-    txt.innerHTML = '<span style="color:' + (duplicate ? '#ffcf69' : '#aaff9c') + '">' + (duplicate ? 'DUPLICATE! AUTO UPGRADE' : 'NEW TOWER UNLOCKED!') + '</span><span style="color:#fff36a">RARITY: ' + rarity + '</span>';
+    txt.innerHTML = '<span class="reveal-status" style="color:' + (duplicate ? '#ffcf69' : '#aaff9c') + '">' + (duplicate ? 'DUPLICATE! AUTO UPGRADE' : 'NEW TOWER UNLOCKED!') + '</span><span class="reveal-rarity" style="color:#fff36a">RARITY: ' + rarity + '</span>';
   }
   revealTimer = setTimeout(() => { ok.classList.remove('hidden'); }, 700);
 }
