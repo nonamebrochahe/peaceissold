@@ -181,6 +181,17 @@
 
   /* SUMMON REVEAL LAYOUT FIX: keep every result element in one centered vertical flow.
      Order is tower -> LEVEL -> duplicate/new status -> RARITY -> OK. */
+  /* CRITICAL: the reveal's display:flex rule must never override .hidden.
+     Otherwise the black overlay remains over the whole game and blocks every click. */
+  #shopScreen > #summonReveal.hidden {
+    display:none !important;
+    pointer-events:none !important;
+    visibility:hidden !important;
+  }
+  #shopScreen > #summonReveal:not(.hidden) {
+    visibility:visible !important;
+    pointer-events:auto !important;
+  }
   #shopScreen > #summonReveal {
     display:flex !important;
     flex-direction:column !important;
