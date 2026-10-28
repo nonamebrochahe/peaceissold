@@ -118,30 +118,23 @@
   #revealStage { width:300px; height:330px; display:flex; align-items:center; justify-content:center; }
   #revealBox.charging { width:140px; height:140px; background:#8b5a2b; border:6px solid #3a200c; box-shadow:inset 0 6px 0 #a67440, inset 0 -6px 0 #6b4423, 0 0 0 rgba(255,230,120,0);
     display:flex; align-items:center; justify-content:center; font-size:60px; color:#fff3d6; text-shadow:4px 4px 0 #3a200c; animation:charge 1.9s ease-in forwards; }
-  /* Summon reveal is a collectible card pack, not a plain question-mark box. */
+  /* Reveal uses the existing Grassland/Desert PNG itself, split into two torn halves. */
   #revealBox.charging {
-    position:relative; width:190px; height:245px; flex-direction:column;
-    background:linear-gradient(145deg,#b87a36 0%,#70401f 48%,#3a200c 100%);
-    border:7px solid #160d06; border-radius:5px;
-    box-shadow:inset 0 0 0 4px #e6bd69, inset 0 0 0 9px #70401f, 0 12px 0 #160d06, 0 0 28px rgba(255,210,90,.25);
-    font-size:74px; animation:charge 1.9s ease-in forwards;
+    position:relative; width:230px; height:300px; flex-direction:column;
+    background:transparent; border:0; border-radius:0; box-shadow:none;
+    font-size:0; animation:charge 1.9s ease-in forwards;
+    overflow:visible; isolation:isolate;
   }
-  #revealBox.charging::before {
-    content:"SUMMON"; position:absolute; top:15px; left:0; right:0;
-    color:#fff3d6; font-family:inherit; font-size:13px; letter-spacing:1px;
-    text-shadow:3px 3px #3a200c; text-align:center;
-  }
-  #revealBox.charging::after {
-    content:"CARD"; position:absolute; bottom:15px; left:0; right:0;
-    color:#ffd95a; font-family:inherit; font-size:14px; text-shadow:3px 3px #3a200c;
-    text-align:center;
-  }
-  #revealBox.tearing { animation:packTear .38s ease-in both !important; }
-  @keyframes packTear {
-    0% { transform:scale(1.2) rotate(0); clip-path:inset(0 0 0 0); }
-    35% { transform:scale(1.28) rotate(-4deg); clip-path:polygon(0 0,100% 0,96% 15%,100% 30%,95% 43%,100% 58%,96% 75%,100% 100%,0 100%); }
-    100% { transform:translateY(-90px) scale(.75) rotate(10deg); opacity:0; clip-path:polygon(0 0,100% 0,96% 15%,100% 30%,95% 43%,100% 58%,96% 75%,100% 100%,0 100%); }
-  }
+  #revealBox.charging::before, #revealBox.charging::after { content:none !important; }
+  .pack-tear-half { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .pack-tear-half img { position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+  .pack-tear-top { clip-path:polygon(0 0,100% 0,100% 48%,94% 51%,86% 48%,77% 52%,68% 48%,58% 52%,48% 48%,38% 52%,28% 48%,18% 52%,9% 48%,0 51%); }
+  .pack-tear-bottom { clip-path:polygon(0 51%,9% 48%,18% 52%,28% 48%,38% 52%,48% 48%,58% 52%,68% 48%,77% 52%,86% 48%,94% 51%,100% 48%,100% 100%,0 100%); }
+  #revealBox.tearing { animation:none !important; }
+  #revealBox.tearing .pack-tear-top { animation:packTearTop .42s cubic-bezier(.2,.8,.3,1) both; }
+  #revealBox.tearing .pack-tear-bottom { animation:packTearBottom .42s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes packTearTop { 0%{transform:translate(0,0) rotate(0);opacity:1} 35%{transform:translate(7px,-12px) rotate(4deg)} 100%{transform:translate(22px,-155px) rotate(17deg);opacity:0} }
+  @keyframes packTearBottom { 0%{transform:translate(0,0) rotate(0);opacity:1} 35%{transform:translate(-6px,12px) rotate(-3deg)} 100%{transform:translate(-20px,155px) rotate(-12deg);opacity:0} }
   #revealStage { perspective:700px; }
   #revealBox.revealed .card { box-shadow:0 0 28px rgba(255,225,90,.45); }
   @keyframes charge {
@@ -1213,7 +1206,7 @@ function summonTower(kind = 'grass') {
   else towerLevels[picked]=towerLevelOf(picked)+1;
   addPlayerXP(duplicate?35:50); save();
   // The result is already saved; the reveal is a slow build-up followed by a sudden "pat!" pop.
-  playSummonReveal(t, duplicate);
+  playSummonReveal(t, duplicate, kind);
 }
 function showRevealedCard(t, duplicate, secret) {
   const ov = $('summonReveal'), box = $('revealBox'), txt = $('revealText'), ok = $('btnRevealOk'), fl = $('revealFlash');
@@ -1242,7 +1235,7 @@ function fastForwardSummonReveal() {
   const secret = pending.t.id === 'baklavada' || TOWER_RARITY[pending.t.id] === 'SECRET';
   showRevealedCard(pending.t, pending.duplicate, secret);
 }
-function playSummonReveal(t, duplicate) {
+function playSummonReveal(t, duplicate, kind = 'grass') {
   summoning = true;
   buildTowerShop();
   const ov = $('summonReveal'), box = $('revealBox'), txt = $('revealText'), ok = $('btnRevealOk'), fl = $('revealFlash'), layer = $('secretLayer');
@@ -1253,7 +1246,7 @@ function playSummonReveal(t, duplicate) {
   ov.classList.remove('secret');
   ok.classList.add('hidden');
   fl.classList.remove('go');
-  revealPending = { t, duplicate };
+  revealPending = { t, duplicate, kind };
   const secret = t.id === 'baklavada' || TOWER_RARITY[t.id] === 'SECRET';
 
   if (secret) {
@@ -1289,11 +1282,17 @@ function playSummonReveal(t, duplicate) {
 
   box.className = 'charging';
   box.style.opacity = '';
-  box.innerHTML = '?';
+  const packSrc = kind === 'desert' ? 'images/textures/desertcard.png' : 'images/textures/grasslandcard.png';
+  box.innerHTML = '<div class="pack-tear-half pack-tear-top"><img src="' + packSrc + '" alt=""></div><div class="pack-tear-half pack-tear-bottom"><img src="' + packSrc + '" alt=""></div>';
   txt.className = 'dots';
   txt.textContent = 'SUMMONING';
-  // Slow build-up (box grows, shakes and glows for ~1.9s), then pop.
-  revealTimer = setTimeout(() => showRevealedCard(t, duplicate, false), 1950);
+  // Build suspense, then physically tear the selected PNG into two moving pieces.
+  revealTimer = setTimeout(() => {
+    if (!revealPending) return;
+    box.classList.remove('charging');
+    box.classList.add('tearing');
+    revealTimer = setTimeout(() => showRevealedCard(t, duplicate, false), 420);
+  }, 1550);
 }
 function closeSummonReveal() {
   if (!revealPending) return;
