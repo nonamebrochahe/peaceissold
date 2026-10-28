@@ -104,7 +104,16 @@
     text-shadow:2px 2px 0 #000; cursor:pointer; transition:transform .15s, background .15s; }
   .summon-card:hover:not(:disabled) { background:#8f6340; transform:scale(1.05); }
   .summon-card:disabled { opacity:.5; cursor:not-allowed; }
-  .summon-card img { display:block; width:100%; height:auto; min-height:90px; background:#3d2a1c; border:4px solid #000; margin-bottom:8px; image-rendering:auto; }
+  .summon-card img {
+    display:block; width:100%; height:120px; object-fit:cover;
+    background:#3d2a1c; border:4px solid #000; margin-bottom:8px;
+    image-rendering:pixelated; image-rendering:crisp-edges;
+    filter:none !important; -webkit-filter:none !important;
+    opacity:1 !important; transform:none; backface-visibility:hidden;
+  }
+  .summon-card, .summon-card * { filter:none !important; -webkit-filter:none !important; }
+  .summon-card:disabled { opacity:1; cursor:not-allowed; }
+  .summon-card:disabled img { opacity:1 !important; }
   .summon-card .sc-name { display:block; font-size:14px; }
   .summon-card .sc-price { display:block; color:#ffd95a; font-size:11px; margin-top:4px; }
 
@@ -950,10 +959,10 @@ function genPath() {
 const typeOf = id => TOWER_TYPES.find(t => t.id === id);
 const towerLevelOf = id => Math.max(1, Number(towerLevels[id]) || 1);
 function scaledTowerType(type) {
-  const level = towerLevelOf(type.base || type.id), mul = 1 + (level - 1) * 0.05;
+  const level = towerLevelOf(type.base || type.id), mul = Math.pow(1.05, level - 1);
   const clone = Object.assign({}, type, { collectionLevel: level });
-  if (type.farm) clone.income = type.income * (1 + (level - 1) * 0.1);
-  else if (!type.support) { clone.damage = type.damage * mul; clone.range = type.range * (1 + (level - 1) * 0.015); }
+  if (type.farm) clone.income = type.income * Math.pow(1.1, level - 1);
+  else if (!type.support) { clone.damage = type.damage * mul; clone.range = type.range * Math.pow(1.015, level - 1); }
   if (type.support) clone.attackBoost = type.attackBoost + (level - 1) * 0.025;
   return clone;
 }
@@ -1023,24 +1032,52 @@ function refreshInfo() {
   targetButton.disabled = !!(T.farm || T.support);
   targetButton.title = 'Click to change target priority';
   const up = $('btnUp');
-  if (T.upgrade) {
-    const U = typeOf(T.upgrade);
-    up.classList.remove('hidden');
-    up.textContent = 'UPGRADE ' + T.upCost + ' G';
-    up.disabled = money < T.upCost;
-    up.title = U.name;
-  } else up.classList.add('hidden');
+  const extraLevel = Math.max(0, Number(selTower.extraLevel) || 0);
+  const upgradeCost = T.upgrade ? T.upCost : Math.floor(100 * Math.pow(1.35, extraLevel));
+  up.classList.remove('hidden');
+  up.textContent = (T.upgrade ? 'UPGRADE ' : 'POWER +' + (extraLevel + 1) + ' ') + upgradeCost + ' G';
+  up.disabled = money < upgradeCost;
+  up.title = T.upgrade ? typeOf(T.upgrade).name : 'Unlimited stat upgrade · level ' + (extraLevel + 1);
   $('btnSell').textContent = 'SELL +' + sellValue(selTower) + ' G';
 }
 $('btnUp').onclick = () => {
-  if (!selTower || !selTower.type.upgrade) return;
+  if (!selTower) return;
   const T = selTower.type;
-  if (money < T.upCost) return flash('Not enough gold!');
-  money -= T.upCost;
-  selTower.invested = (selTower.invested || 0) + T.upCost; // upgrades count towards the sell value
-  selTower.type = scaledTowerType(typeOf(T.upgrade));
-  selTower.punch = 1;
-  flash(selTower.type.name + '!');
+  const extraLevel = Math.max(0, Number(selTower.extraLevel) || 0);
+  const cost = T.upgrade ? T.upCost : Math.floor(100 * Math.pow(1.35, extraLevel));
+  if (money < cost) return flash('Not enough gold!');
+  money -= cost;
+  selTower.invested = (selTower.invested || 0) + cost;
+  if (T.upgrade) {
+    // Keep the original evolution chain, then allow unlimited stat upgrades after its final form.
+    selTower.type = scaledTowerType(typeOf(T.upgrade));
+    selTower.punch = 1;
+    flash(selTower.type.name + '!');
+  } else {
+    // Infinite upgrade levels: steadily increase damage/range, shorten cooldown, or improve support/farm effects.
+    selTower.extraLevel = extraLevel + 1;
+    const next = selTower.extraLevel;
+    const baseType = selTower.baseUpgradeType || T;
+    if (!selTower.baseUpgradeType) selTower.baseUpgradeType = Object.assign({}, T);
+    const base = selTower.baseUpgradeType;
+    selTower.type = Object.assign({}, base);
+    if (base.farm) {
+      selTower.type.income = base.income * Math.pow(1.12, next);
+    } else if (base.support) {
+      selTower.type.attackBoost = base.attackBoost + next * 0.04;
+      selTower.type.supportRange = base.supportRange * (1 + next * 0.015);
+    } else {
+      selTower.type.damage = base.damage * Math.pow(1.10, next);
+      selTower.type.range = base.range * (1 + next * 0.025);
+      if (Number.isFinite(base.cooldown) && base.cooldown > 0) {
+        selTower.type.cooldown = Math.max(0.08, base.cooldown * Math.pow(0.98, next));
+      }
+    }
+    selTower.type.name = base.name + ' +' + next;
+    selTower.punch = 1;
+    flash(selTower.type.name + ' · INFINITE UPGRADE!');
+  }
+  refreshInfo();
   hud();
 };
 $('btnClose').onclick = () => { selTower = null; refreshInfo(); };
@@ -1098,7 +1135,7 @@ function towerCard(t, statusHTML, buttonLabel, onBuy, disabled=false, opts={}) {
 function upgradeCollectionTower(id) {
   const t=typeOf(id); if(!t || !owned[id]) return;
   const level=towerLevelOf(id), cost=25+level*20;
-  if(level>=20) return flash(t.name+' MAX LEVEL!');
+  // No maximum level: collection upgrades are unlimited.
   if(gems<cost) return flash('NEED '+cost+' GEMS TO UPGRADE '+t.name);
   gems-=cost; towerLevels[id]=level+1; addPlayerXP(20+level*5); save(); buildInventory(); buildShop();
   flash(t.name+' UPGRADED TO LEVEL '+towerLevels[id]+'!');
@@ -1106,7 +1143,7 @@ function upgradeCollectionTower(id) {
 function buildInventory() {
   const box=$('inventoryCards'); if(!box) return; box.innerHTML='';
   const list=TOWER_TYPES.filter(t=>t.placeable && owned[t.id]);
-  list.forEach(t=>box.appendChild(towerCard(t,'','UPGRADE · '+(25+towerLevelOf(t.id)*20)+' G',()=>upgradeCollectionTower(t.id),towerLevelOf(t.id)>=20 || gems < 25+towerLevelOf(t.id)*20)));
+  list.forEach(t=>box.appendChild(towerCard(t,'','UPGRADE · '+(25+towerLevelOf(t.id)*20)+' G',()=>upgradeCollectionTower(t.id),gems < 25+towerLevelOf(t.id)*20)));
   if(!box.children.length) box.textContent='No towers yet. Go to SUMMON!';
   refreshPlayerXP(); setGemIcons();
 }
@@ -1128,7 +1165,7 @@ function summonTower(kind = 'grass') {
   for(const item of pool){ roll-=item.w; if(roll<=0){picked=item.id;break;} }
   const t=typeOf(picked), duplicate=!!owned[picked];
   if(!duplicate){ owned[picked]=true; towerLevels[picked]=1; }
-  else towerLevels[picked]=Math.min(20,towerLevelOf(picked)+1);
+  else towerLevels[picked]=towerLevelOf(picked)+1;
   addPlayerXP(duplicate?35:50); save();
   // The result is already saved; the reveal is a slow build-up followed by a sudden "pat!" pop.
   playSummonReveal(t, duplicate);
