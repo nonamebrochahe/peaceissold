@@ -427,7 +427,7 @@
       <div id="secretLayer"></div>
       <div id="revealFlash"></div>
       <div id="revealStage"><div id="revealBox" class="charging">?</div></div>
-      <div id="revealText" class="dots" aria-live="polite"></div>
+      <div id="revealText" aria-live="polite"></div>
       <button class="rbtn small hidden" id="btnRevealOk">OK</button>
     </div>
   </div>
@@ -1348,6 +1348,11 @@ function playSummonReveal(t, duplicate, kind = 'grass') {
   ov.classList.remove('secret');
   ok.classList.add('hidden');
   fl.classList.remove('go');
+  // Reset the reveal UI completely so stale dark '...' text cannot remain on screen.
+  txt.className = '';
+  txt.textContent = '';
+  box.className = 'charging';
+  box.style.opacity = '';
   revealPending = { t, duplicate, kind };
   const secret = t.id === 'baklavada' || TOWER_RARITY[t.id] === 'SECRET';
 
@@ -1396,7 +1401,9 @@ function playSummonReveal(t, duplicate, kind = 'grass') {
     if (!revealPending) return;
     box.classList.remove('charging');
     box.classList.add('tearing');
-    revealTimer = setTimeout(() => showRevealedCard(t, duplicate, false), 820);
+    revealTimer = setTimeout(() => {
+      if (revealPending) showRevealedCard(t, duplicate, false);
+    }, 820);
   }, 1550);
 }
 function closeSummonReveal() {
