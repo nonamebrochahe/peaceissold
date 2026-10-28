@@ -63,10 +63,10 @@
     background: linear-gradient(180deg, #bfe3c0 0%, #8fc68f 55%, #5f9a62 100%); z-index: 10; text-align: center; padding: 20px; overflow: hidden; }
   .screen > * { position: relative; z-index: 2; }
   /* Shared scenic background for all front-end screens. */
-  #menu, #maps, #inventory, #shopScreen, #end { background: #4b301d; isolation: isolate; }
+  #menu, #maps, #inventory, #shopScreen, #enemyIndex, #end { background: #4b301d; isolation: isolate; }
   #menu .menu-bg { position: absolute !important; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0 !important; pointer-events: none; }
-  #maps::before, #inventory::before, #shopScreen::before, #end::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: url('images/textures/mainmenu.png') center / cover no-repeat; }
-  #menu::after, #maps::after, #inventory::after, #shopScreen::after, #end::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.48)); }
+  #maps::before, #inventory::before, #shopScreen::before, #enemyIndex::before, #end::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: url('images/textures/mainmenu.png') center / cover no-repeat; }
+  #menu::after, #maps::after, #inventory::after, #shopScreen::after, #enemyIndex::after, #end::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.48)); }
   #menu .cloud { position: absolute !important; display: block; width: 240px; height: auto; image-rendering: auto; object-fit: contain; filter: none !important; -webkit-filter: none !important; z-index: 2 !important; pointer-events: none; opacity: .95; animation: cloudDrift 34s linear infinite; backface-visibility: visible; }
   #menu .cloud.c1 { top: 8%; left: -280px; animation-delay: -7s; }
   #menu .cloud.c2 { top: 27%; left: -340px; width: 180px; opacity: .8; animation-duration: 46s; animation-delay: -25s; }
@@ -74,7 +74,7 @@
   #menu .tree { z-index: 2 !important; }
   #menu #leafCv { z-index: 3 !important; }
   #menu h1, #menu .gemrow, #menu .rbtn { z-index: 4; }
-  #maps > *, #inventory > *, #shopScreen > *, #end > * { z-index: 2; }
+  #maps > *, #inventory > *, #shopScreen > *, #enemyIndex > *, #end > * { z-index: 2; }
   #inventoryCards { width:min(900px,100%); max-height:390px; overflow-y:auto; gap:12px; align-content:flex-start; padding:12px; display:flex; flex-wrap:wrap; justify-content:center; }
   #inventoryCards .card { width:190px; height:215px; min-width:190px; max-width:190px; margin:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow:hidden; }
   .tower-level { color:#fff36a; font-size:10px; margin:5px 0; }
@@ -97,6 +97,17 @@
   .xp-fill { height:100%; width:0%; background:#76e35c; }
   #summonResult { min-height:40px; max-width:700px; color:#fff36a; font-size:11px; line-height:2; margin:8px 0; }
   .shop-price { display:block; margin:7px 0; color:#ffd95a; font-size:10px; line-height:2; }
+
+  /* ENEMY INDEX */
+  #enemyCards { width:min(920px,100%); max-height:410px; overflow-y:auto; gap:12px; align-content:flex-start; padding:12px; display:flex; flex-wrap:wrap; justify-content:center; }
+  #enemyCards .card { width:166px; height:218px; min-width:166px; max-width:166px; margin:0; padding:10px 8px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow:hidden; cursor:default; }
+  #enemyCards .card:hover { transform:none; }
+  #enemyCards .card .ico { flex:none; width:86px; height:86px; margin:0 auto 6px; }
+  #enemyCards .card strong { display:block; width:100%; font-size:10px; line-height:1.6; }
+  #enemyCards .card .card-status { font-size:8px; line-height:1.7; margin:2px 0 0; }
+  #enemyCards .card .hbtn { margin:auto 0 0 0; font-size:8px; padding:7px 5px; max-width:100%; }
+  #enemyCards .card.locked { opacity:.85; }
+  #enemyIndexCount { font-size:10px; line-height:2; color:#fff3d6; text-shadow:2px 2px 0 #000; margin-bottom:4px; }
 
   /* SUMMON CARDS (grassland / desert) */
   #summonOptions { display:flex; flex-wrap:nowrap; justify-content:center; gap:28px; margin:10px 0 16px; }
@@ -308,6 +319,7 @@
   .rbtn.small { font-size: 14px; min-width: 200px; padding: 14px 20px; background: #6b4423; }
   .rbtn.small:hover { background: #805530; }
   .rbtn:disabled { opacity: .55; cursor: not-allowed; }
+  .rbtn.menu-sub { font-size: 16px; padding: 14px 34px; margin: 7px; }
   .gemrow { display: flex; align-items: center; gap: 10px; font-size: 16px; color: #fff3d6; text-shadow: 2px 2px 0 #3a200c; margin-bottom: 20px; }
   .gemico { width: 28px; height: 28px; background-size: contain; background-repeat: no-repeat; background-color: #3cf; display: inline-block; }
   .card { width: 260px; background: #7a5230; border: 6px solid #3a200c; padding: 14px; margin: 10px; font-size: 11px; line-height: 2; cursor: pointer; text-shadow: 2px 2px 0 #000; }
@@ -553,8 +565,9 @@
     <h1>PEACE<br>IS SOLD</h1>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
     <button class="rbtn" id="btnPlay">PLAY</button>
-    <button class="rbtn" id="btnInventory" style="font-size:16px">TOWERS</button>
-    <button class="rbtn" id="btnShopMenu" style="font-size:16px">SUMMON</button>
+    <button class="rbtn menu-sub" id="btnInventory">TOWERS</button>
+    <button class="rbtn menu-sub" id="btnShopMenu">SUMMON</button>
+    <button class="rbtn menu-sub" id="btnEnemies">ENEMY INDEX</button>
     <div class="xp-panel"><div id="menuPlayerLevel">PLAYER LEVEL 1</div><div class="xp-track"><div class="xp-fill" id="menuXpFill"></div></div><div id="menuXpText">0 / 100 XP</div></div>
   </div>
 
@@ -587,6 +600,15 @@
     <div class="row" id="inventoryCards"></div>
     <button class="rbtn small" id="btnInventoryBack">BACK</button>
     <div class="xp-panel"><div id="towersPlayerLevel">PLAYER LEVEL 1</div><div class="xp-track"><div class="xp-fill" id="towersXpFill"></div></div><div id="towersXpText">0 / 100 XP</div></div>
+  </div>
+
+  <!-- ENEMY INDEX -->
+  <div class="screen hidden" id="enemyIndex">
+    <h2>ENEMY INDEX</h2>
+    <div class="gemrow" style="margin-bottom:10px"><span class="gemico gi"></span><b class="gemcount">0</b></div>
+    <div id="enemyIndexCount">DISCOVERED 0 / 0</div>
+    <div class="row" id="enemyCards"></div>
+    <button class="rbtn small" id="btnEnemyBack">BACK</button>
   </div>
 
   <!-- TOWER SUMMON (cards) -->
@@ -1011,24 +1033,26 @@ const DIFFICULTIES = {
   hard:   { label: 'HARD', waves: 40, hp: 1.3, speed: 1.08, mobs: 1.15, boss: 1.55, waveScale: 1.05 }
 };
 
-/* Tower shop: gemCost unlocks a tower permanently; cost is the in-game gold placement price. */
+/* Tower shop: gemCost unlocks a tower permanently; cost is the in-game gold placement price.
+   maxRange = hard cap on attack reach, no matter how many collection levels / power upgrades the tower has.
+   maxSupportRange = same cap for support (DOGODA) buff range. */
 const TOWER_TYPES = [
-  { id: 'delici', name: 'DELICI', cost: 50, range: 170, cooldown: 0.65, damage: 2, bulletSpeed: 520, bulletSize: 12,
+  { id: 'delici', name: 'DELICI', cost: 50, range: 170, maxRange: 195, cooldown: 0.65, damage: 2, bulletSpeed: 520, bulletSize: 12,
     size: 56, weaponLen: 44, body: 'delice', weapon: 'atardeli', bullet: 'deli', hue: 0, upgrade: 'dolten', upCost: 130, placeable: true,
     description: 'Balanced starter tower.' },
-  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 200, cooldown: 0.45, damage: 5, bulletSpeed: 640, bulletSize: 16,
+  { id: 'dolten', name: 'DOLTEN', cost: 0, range: 200, maxRange: 225, cooldown: 0.45, damage: 5, bulletSpeed: 640, bulletSize: 16,
     size: 82, weaponLen: 58, body: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false, base: 'delici', upgrade: 'dolten2', upCost: 300,
     description: 'Large upgrade of DELICI.' },
   /* 3rd upgrade: DOLTEN II holds two guns and fires in pairs. Uses images/towers/dolten2.png if it exists, otherwise dolten.png. */
-  { id: 'dolten2', name: 'DOLTEN II', cost: 0, range: 215, cooldown: 0.42, damage: 4.5, bulletSpeed: 680, bulletSize: 18,
+  { id: 'dolten2', name: 'DOLTEN II', cost: 0, range: 215, maxRange: 240, cooldown: 0.42, damage: 4.5, bulletSpeed: 680, bulletSize: 18,
     size: 92, weaponLen: 64, body: 'dolten2', fb: 'dolten', weapon: 'atardeli', bullet: 'deli', hue: 0, placeable: false, twin: true, base: 'delici',
     description: 'Final upgrade. Two guns, fires in pairs.' },
-  { id: 'efe', name: 'EFE', cost: 70, range: 80, cooldown: 0.45, damage: 3, melee: true,
+  { id: 'efe', name: 'EFE', cost: 70, range: 80, maxRange: 92, cooldown: 0.45, damage: 3, melee: true,
     size: 58, weaponLen: 34, body: 'efe', fb: 'delice', fbHue: 90, weapon: 'knife', hue: 0, placeable: true, gemCost: 40,
     description: 'Close-range melee tower.' },
   { id: 'dogoda', name: 'DOGODA', cost: 250, range: 205, cooldown: 0, damage: 0, bulletSpeed: 0, bulletSize: 0,
     size: 60, weaponLen: 0, body: 'dogoda', weapon: null, bullet: null, hue: 0, placeable: true, gemCost: 100,
-    support: true, supportRange: 205, attackBoost: 1.25,
+    support: true, supportRange: 205, maxSupportRange: 250, attackBoost: 1.25,
     description: 'Support-only tower: plays dogoda.mp3 and boosts nearby towers by 25%. It never attacks enemies.' },
   /* MAX: farm tower. Never attacks; pays gold every time a wave ends. MAX -> MAX II -> MAX III */
   { id: 'max', name: 'MAX', cost: 150, range: 0, cooldown: 0, damage: 0, size: 60, weaponLen: 0, body: 'max', weapon: null, bullet: null, hue: 0,
@@ -1039,13 +1063,14 @@ const TOWER_TYPES = [
     placeable: false, farm: true, income: 110, base: 'max', description: 'Final farm tower.' },
   /* BAKLAVADA: SECRET tower (1% from the grassland card). Throws its rainbow sword like a boomerang;
      the sword damages every enemy it passes through, both on the way out and on the way back. */
-  { id: 'baklavada', name: 'BAKLAVADA', cost: 300, range: 230, cooldown: 0.25, damage: 7, bulletSpeed: 560, bulletSize: 0,
+  { id: 'baklavada', name: 'BAKLAVADA', cost: 300, range: 230, maxRange: 250, cooldown: 0.25, damage: 7, bulletSpeed: 560, bulletSize: 0,
     size: 70, weaponLen: 50, body: 'baklavada', weapon: 'rainsword', bullet: null, hue: 0, placeable: true,
     boomerang: true, rainbow: true, secret: true,
     description: 'SECRET. Throws a rainbow sword like a boomerang that hits many enemies.' }
 ];
 
-/* Enemies: dmg = % of base health taken when they reach the base */
+/* Enemies: dmg = % of base health taken when they reach the base.
+   wMul = extra draw width multiplier (the sprite is size tall and size*wMul wide). */
 const ENEMY = {
   greenistan: { hp: 8,  speed: 80,  reward: 6,  size: 48, dmg: 4 },
   redistan:   { hp: 20, speed: 108, reward: 10, size: 52, dmg: 8 },
@@ -1053,9 +1078,81 @@ const ENEMY = {
   // The faster one is drawn with a 3-frame walk animation: sandity1.png -> sandity2.png -> sandity3.png.
   sandity:    { hp: 10, speed: 56,  reward: 6,  size: 50, dmg: 5 },
   sandity1:   { hp: 18, speed: 108, reward: 10, size: 52, dmg: 8 },
-  // CAMEL: slow, heavily-armoured desert enemy with a two-frame walk animation.
-  camel:      { hp: 78, speed: 34, reward: 18, size: 66, dmg: 13 }
+  // CAMEL: slow, heavily-armoured desert enemy with a two-frame walk animation. Bigger in both width and height.
+  camel:      { hp: 78, speed: 34, reward: 18, size: 82, dmg: 13, wMul: 1.3 }
 };
+
+/* ================== ENEMY INDEX ==================
+   Every enemy is "discovered" the first time it spawns in a run. Each discovered enemy gives a one-time gem reward
+   that you collect from the ENEMY INDEX screen in the main menu. */
+const ENEMY_INDEX = [
+  { id: 'greenistan', name: 'GREENISTAN',  img: 'greenistan', hp: 8,    speed: 80,  dmg: 4,  map: 'GRASSLAND', gems: 20 },
+  { id: 'redistan',   name: 'REDISTAN',    img: 'redistan',   hp: 20,   speed: 108, dmg: 8,  map: 'GRASSLAND', gems: 35 },
+  { id: 'boss',       name: 'GRASS BOSS',  img: 'boss',       hp: 750,  speed: 27,  dmg: 22, map: 'GRASSLAND', gems: 150 },
+  { id: 'sandity',    name: 'SANDITY',     img: 'sandity',    hp: 10,   speed: 56,  dmg: 5,  map: 'DESERT',    gems: 25 },
+  { id: 'sandity1',   name: 'FAST SANDITY',img: 'sandity1',   hp: 18,   speed: 108, dmg: 8,  map: 'DESERT',    gems: 40 },
+  { id: 'camel',      name: 'CAMEL',       img: 'camelwalk1', hp: 78,   speed: 34,  dmg: 13, map: 'DESERT',    gems: 75 },
+  { id: 'sandboss',   name: 'DESERT BOSS', img: 'sandboss',   hp: 1100, speed: 31,  dmg: 26, map: 'DESERT',    gems: 200 }
+];
+let enemySeen = {}, enemyClaimed = {};
+try {
+  enemySeen = JSON.parse(localStorage.getItem('ps_enemy_seen') || '{}') || {};
+  enemyClaimed = JSON.parse(localStorage.getItem('ps_enemy_claimed') || '{}') || {};
+} catch (e) {}
+function saveEnemyIndex() {
+  try {
+    localStorage.setItem('ps_enemy_seen', JSON.stringify(enemySeen));
+    localStorage.setItem('ps_enemy_claimed', JSON.stringify(enemyClaimed));
+  } catch (e) {}
+}
+function discoverEnemy(id) {
+  if (enemySeen[id]) return;
+  enemySeen[id] = true;
+  saveEnemyIndex();
+  const info = ENEMY_INDEX.find(x => x.id === id);
+  if (info) flash('NEW ENEMY DISCOVERED: ' + info.name + '! CLAIM GEMS IN THE ENEMY INDEX', 3200);
+}
+function claimEnemy(id) {
+  const info = ENEMY_INDEX.find(x => x.id === id);
+  if (!info || !enemySeen[id] || enemyClaimed[id]) return;
+  enemyClaimed[id] = true;
+  gems += info.gems;
+  saveEnemyIndex();
+  addPlayerXP(15);
+  save();
+  buildEnemyIndex();
+  flash(info.name + ' CLAIMED! +' + info.gems + ' GEMS');
+}
+function buildEnemyIndex() {
+  const box = $('enemyCards'); if (!box) return;
+  box.innerHTML = '';
+  let found = 0;
+  ENEMY_INDEX.forEach(info => {
+    const seen = !!enemySeen[info.id], claimed = !!enemyClaimed[info.id];
+    if (seen) found++;
+    const c = document.createElement('div');
+    c.className = 'card' + (seen ? '' : ' locked');
+    const spriteStyle = 'background-image:url(' + IMG[info.img] + ');background-color:transparent;' + (seen ? '' : 'filter:brightness(0);opacity:.55;');
+    c.innerHTML = '<div class="ico" style="' + spriteStyle + '"></div>' +
+      '<strong>' + (seen ? info.name : '???') + '</strong>' +
+      '<span class="card-status">' + (seen
+        ? 'HP ' + info.hp + '<br>SPEED ' + info.speed + '<br>BASE DMG ' + info.dmg + '%<br>' + info.map
+        : 'NOT DISCOVERED<br>FIGHT IT IN A RUN') + '</span>';
+    if (!seen) {
+      const b = document.createElement('button'); b.className = 'hbtn'; b.disabled = true; b.textContent = 'LOCKED'; c.appendChild(b);
+    } else if (!claimed) {
+      const b = document.createElement('button'); b.className = 'hbtn'; b.textContent = 'CLAIM +' + info.gems + ' GEMS';
+      b.onclick = () => claimEnemy(info.id); c.appendChild(b);
+    } else {
+      const t = document.createElement('div'); t.style.cssText = 'margin-top:auto'; t.innerHTML = TICK_HTML; c.appendChild(t);
+    }
+    box.appendChild(c);
+  });
+  const count = $('enemyIndexCount');
+  if (count) count.textContent = 'DISCOVERED ' + found + ' / ' + ENEMY_INDEX.length + ' · DISCOVER ENEMIES TO EARN GEMS';
+  setGemIcons();
+  document.querySelectorAll('.gemcount').forEach(el => el.textContent = gems);
+}
 
 let pathTiles = new Set(), pathPts = [];
 let blockedTiles = new Set(); // cactus tiles: towers cannot be placed here
@@ -1270,11 +1367,14 @@ function genPath() {
 /* ================== IN-GAME SHOP + MENU INVENTORY ================== */
 const typeOf = id => TOWER_TYPES.find(t => t.id === id);
 const towerLevelOf = id => Math.max(1, Number(towerLevels[id]) || 1);
+// Reach limit: a tower's attack range can never grow past its maxRange (melee EFE stays melee).
+const capRange = (T, r) => (T && T.maxRange) ? Math.min(T.maxRange, r) : r;
+const capSupportRange = (T, r) => (T && T.maxSupportRange) ? Math.min(T.maxSupportRange, r) : r;
 function scaledTowerType(type) {
   const level = towerLevelOf(type.base || type.id), mul = Math.pow(1.05, level - 1);
   const clone = Object.assign({}, type, { collectionLevel: level });
   if (type.farm) clone.income = type.income * Math.pow(1.1, level - 1);
-  else if (!type.support) { clone.damage = type.damage * mul; clone.range = type.range * Math.pow(1.015, level - 1); }
+  else if (!type.support) { clone.damage = type.damage * mul; clone.range = capRange(type, type.range * Math.pow(1.015, level - 1)); }
   if (type.support) clone.attackBoost = type.attackBoost + (level - 1) * 0.025;
   return clone;
 }
@@ -1335,7 +1435,9 @@ function refreshInfo() {
   $('iDmg').textContent = T.farm ? 'FARM: +' + Math.round(T.income) + ' G / WAVE'
     : T.support ? 'SUPPORT ONLY · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK'
     : 'DAMAGE: ' + (Math.round(T.damage * 10) / 10) + (T.twin ? ' x2' : '') + (T.boomerang ? ' · PIERCE' : '');
-  $('iRng').textContent = T.farm ? 'NO ATTACK' : T.support ? 'BUFF RANGE: ' + T.supportRange : 'RANGE: ' + Math.round(T.range);
+  const atRangeCap = T.maxRange && T.range >= T.maxRange - 0.01;
+  const atSupportCap = T.maxSupportRange && T.supportRange >= T.maxSupportRange - 0.01;
+  $('iRng').textContent = T.farm ? 'NO ATTACK' : T.support ? 'BUFF RANGE: ' + Math.round(T.supportRange) + (atSupportCap ? ' (MAX)' : '') : 'RANGE: ' + Math.round(T.range) + (atRangeCap ? ' (MAX)' : '');
   const targetButton = $('btnTargetMode');
   const targetModes = ['closest', 'leastHealth', 'strongest', 'first', 'last'];
   const targetLabels = { closest: 'CLOSEST', leastHealth: 'LEAST HP', strongest: 'STRONGEST', first: 'FIRST', last: 'LAST' };
@@ -1367,6 +1469,7 @@ $('btnUp').onclick = () => {
     flash(selTower.type.name + '!');
   } else {
     // Infinite upgrade levels: steadily increase damage/range, shorten cooldown, or improve support/farm effects.
+    // Range and support range are hard-capped (maxRange / maxSupportRange), so the extra power goes into damage and speed.
     selTower.extraLevel = extraLevel + 1;
     const next = selTower.extraLevel;
     const baseType = selTower.baseUpgradeType || T;
@@ -1377,10 +1480,10 @@ $('btnUp').onclick = () => {
       selTower.type.income = base.income * Math.pow(1.12, next);
     } else if (base.support) {
       selTower.type.attackBoost = base.attackBoost + next * 0.04;
-      selTower.type.supportRange = base.supportRange * (1 + next * 0.015);
+      selTower.type.supportRange = capSupportRange(base, base.supportRange * (1 + next * 0.015));
     } else {
       selTower.type.damage = base.damage * Math.pow(1.10, next);
-      selTower.type.range = base.range * (1 + next * 0.025);
+      selTower.type.range = capRange(base, base.range * (1 + next * 0.025));
       if (Number.isFinite(base.cooldown) && base.cooldown > 0) {
         selTower.type.cooldown = Math.max(0.08, base.cooldown * Math.pow(0.98, next));
       }
@@ -1447,7 +1550,7 @@ function towerCard(t, statusHTML, buttonLabel, onBuy, disabled=false, opts={}) {
 function upgradeCollectionTower(id) {
   const t=typeOf(id); if(!t || !owned[id]) return;
   const level=towerLevelOf(id), cost=25+level*20;
-  // No maximum level: collection upgrades are unlimited.
+  // No maximum level: collection upgrades are unlimited (reach is capped by maxRange, damage keeps growing).
   if(gems<cost) return flash('NEED '+cost+' GEMS TO UPGRADE '+t.name);
   gems-=cost; towerLevels[id]=level+1; addPlayerXP(20+level*5); save(); buildInventory(); buildShop();
   flash(t.name+' UPGRADED TO LEVEL '+towerLevels[id]+'!');
@@ -1841,6 +1944,8 @@ function spawnEnemy(type, waveId) {
     ? (desert ? { hp: 1100 + waveId * 60, speed: 31, reward: 160 + waveId * 8, size: 130, dmg: 26 }
               : { hp: 750 + waveId * 45, speed: 27, reward: 130 + waveId * 8, size: 124, dmg: 22 })
     : ENEMY[type];
+  // Enemy Index: the first time an enemy appears it becomes discovered.
+  discoverEnemy(isBoss ? (desert ? 'sandboss' : 'boss') : type);
   // Gradual scaling keeps 20- and 40-wave runs challenging without becoming absurd.
   const MP = MAPS[selectedMap] || MAPS.grass;
   const k = waveId - 1;
@@ -1854,6 +1959,7 @@ function spawnEnemy(type, waveId) {
   const hp = d.hp * waveHpMul * difficultyHp * mapHpMul;
   enemies.push({ type, waveId, isBoss, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
     hp, maxHp: hp, speed: d.speed * spMul * difficulty.speed * MP.speedMul, reward: Math.round(d.reward * MP.rewardMul), size: d.size,
+    wMul: d.wMul || 1,
     dmg: d.dmg, img: isBoss ? (desert ? 'sandboss' : 'boss') : type, dir: 1,
     walkImgs: (isBoss && desert) ? ['sandboss', 'sandboss2'] : type === 'camel' ? ['camelwalk1', 'camelwalk2'] : (type === 'sandity1' ? ['sandity1', 'sandity2', 'sandity3'] : null),
     walkFps: (isBoss && desert) ? 3.5 : type === 'camel' ? 3.2 : 9,
@@ -1899,12 +2005,14 @@ addEventListener('keydown', e => {
   if (e.key === ' ') { e.preventDefault(); skipWave(); }
 });
 
-const SCREEN_IDS = ['menu', 'maps', 'inventory', 'shopScreen', 'end'];
+const SCREEN_IDS = ['menu', 'maps', 'inventory', 'shopScreen', 'enemyIndex', 'end'];
 const show = id => { SCREEN_IDS.forEach(s => $(s).classList.toggle('hidden', s !== id)); refreshPlayerXP(); document.querySelectorAll('.gemcount').forEach(el => el.textContent=gems); };
 $('btnPlay').onclick = () => { startMenuMusic(); show('maps'); };
 $('btnMapBack').onclick = () => { show('menu'); startMenuMusic(); };
 $('btnInventory').onclick = () => { startMenuMusic(); buildInventory(); show('inventory'); };
 $('btnInventoryBack').onclick = () => { show('menu'); startMenuMusic(); };
+$('btnEnemies').onclick = () => { startMenuMusic(); buildEnemyIndex(); show('enemyIndex'); };
+$('btnEnemyBack').onclick = () => { show('menu'); startMenuMusic(); };
 // Promo codes are redeemed once per browser save. MAX is unlocked by MAXIMILIAN.
 $('promoApply').onclick = () => {
   const input = $('promoInput');
@@ -2224,7 +2332,7 @@ function render() {
   const mtx = Math.floor(mouse.x / TILE), mty = Math.floor(mouse.y / TILE);
 
   if (running && selected && mouse.x >= 0) {
-    const T = typeOf(selected);
+    const T = scaledTowerType(typeOf(selected));
     const ok = !pathTiles.has(mtx + ',' + mty) && !blockedTiles.has(mtx + ',' + mty) && !towers.some(t => t.tx === mtx && t.ty === mty) && money >= T.cost;
     ctx.fillStyle = ok ? 'rgba(255,255,255,.25)' : 'rgba(255,0,0,.35)';
     ctx.fillRect(mtx * TILE, mty * TILE, TILE, TILE);
@@ -2439,7 +2547,7 @@ function render() {
 
   let hovered = null, hd = 1e9;
   for (const e of enemies) {
-    const s = e.size;
+    const s = e.size, wm = e.wMul || 1;
     const air = e.isBoss ? 0 : Math.abs(Math.sin(time * 7 + e.phase));
     const hop = e.isBoss ? Math.abs(Math.sin(time * 5.2 + e.phase)) * 2.2 : air * 8;
     const bossJiggle = e.isBoss ? Math.sin(time * 8.5 + e.phase) : 0;
@@ -2461,11 +2569,12 @@ function render() {
       imgKey = e.walkImgs[Math.floor(time * e.walkFps + e.phase) % e.walkImgs.length];
       if (!images[imgKey]) imgKey = e.walkImgs[0];
     }
-    drawImg(imgKey, -s / 2, -s, s, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : e.type.startsWith('sandity') ? '#e0b050' : e.type === 'camel' ? '#b88a4a' : '#d33');
+    // wMul makes wide enemies (CAMEL) wider than they are tall.
+    drawImg(imgKey, -s * wm / 2, -s, s * wm, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : e.type.startsWith('sandity') ? '#e0b050' : e.type === 'camel' ? '#b88a4a' : '#d33');
     ctx.restore();
     if (mouse.x >= 0) {
       const d = Math.hypot(mouse.x - e.x, mouse.y - e.y);
-      if (d < s / 2 + 6 && d < hd) { hd = d; hovered = e; }
+      if (d < s * wm / 2 + 6 && d < hd) { hd = d; hovered = e; }
     }
   }
 
