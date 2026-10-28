@@ -660,6 +660,8 @@ const IMG = {
   sandity1:   'images/enemies/sandity1.png',
   sandity2:   'images/enemies/sandity2.png',
   sandity3:   'images/enemies/sandity3.png',
+  camelwalk1: 'images/enemies/camelwalk1.png',
+  camelwalk2: 'images/enemies/camelwalk2.png',
   sandboss:   'images/enemies/sandboss.png',
   sandboss2:  'images/enemies/sandboss2.png',
   // MAX farm tower (3 stages)
@@ -937,6 +939,7 @@ const loadingAssets = [
   'images/towers/dogoda.png', 'images/projectiles/guitar.png', 'images/projectiles/amp.png',
   'images/textures/sand.png', 'images/textures/sandpath.png', 'images/textures/cactus.png',
   'images/enemies/sandity.png', 'images/enemies/sandity1.png', 'images/enemies/sandity2.png', 'images/enemies/sandity3.png',
+  'images/enemies/camelwalk1.png', 'images/enemies/camelwalk2.png',
   'images/enemies/sandboss.png', 'images/enemies/sandboss2.png', 'images/enemies/boss.png',
   'images/towers/max.png', 'images/towers/max2.png', 'images/towers/max3.png',
   'images/towers/baklavada.png', 'images/weapons/rainsword.png',
@@ -1049,7 +1052,9 @@ const ENEMY = {
   // Desert enemies: SANDITY is its own slow enemy (sandity.png).
   // The faster one is drawn with a 3-frame walk animation: sandity1.png -> sandity2.png -> sandity3.png.
   sandity:    { hp: 10, speed: 56,  reward: 6,  size: 50, dmg: 5 },
-  sandity1:   { hp: 18, speed: 108, reward: 10, size: 52, dmg: 8 }
+  sandity1:   { hp: 18, speed: 108, reward: 10, size: 52, dmg: 8 },
+  // CAMEL: slow, heavily-armoured desert enemy with a two-frame walk animation.
+  camel:      { hp: 78, speed: 34, reward: 18, size: 66, dmg: 13 }
 };
 
 let pathTiles = new Set(), pathPts = [];
@@ -1769,6 +1774,10 @@ function payWaveRewards(batch) {
 
 function pickEnemyType(w) {
   if (selectedMap === 'desert') {
+    // Camels are exclusive to Desertta: rare early, more common in later waves.
+    // They move slowly but have high HP and deal heavy damage if they reach the base.
+    const camelChance = Math.min(0.28, 0.08 + Math.max(0, w - 1) * 0.005);
+    if (Math.random() < camelChance) return 'camel';
     const ew = Math.min(w, 10) + Math.max(0, w - 10) * 0.5;
     const slowW = Math.max(0.15, 1 - ew * 0.12);
     const fastW = ew >= 3 ? Math.min(0.85, 0.05 + ew * 0.08) : 0;
@@ -1846,8 +1855,8 @@ function spawnEnemy(type, waveId) {
   enemies.push({ type, waveId, isBoss, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
     hp, maxHp: hp, speed: d.speed * spMul * difficulty.speed * MP.speedMul, reward: Math.round(d.reward * MP.rewardMul), size: d.size,
     dmg: d.dmg, img: isBoss ? (desert ? 'sandboss' : 'boss') : type, dir: 1,
-    walkImgs: (isBoss && desert) ? ['sandboss', 'sandboss2'] : (type === 'sandity1' ? ['sandity1', 'sandity2', 'sandity3'] : null),
-    walkFps: (isBoss && desert) ? 3.5 : 9,
+    walkImgs: (isBoss && desert) ? ['sandboss', 'sandboss2'] : type === 'camel' ? ['camelwalk1', 'camelwalk2'] : (type === 'sandity1' ? ['sandity1', 'sandity2', 'sandity3'] : null),
+    walkFps: (isBoss && desert) ? 3.5 : type === 'camel' ? 3.2 : 9,
     attackTimer: isBoss ? 3.2 : 0, attackCooldown: isBoss ? 6.2 : 0 });
 }
 
@@ -2452,7 +2461,7 @@ function render() {
       imgKey = e.walkImgs[Math.floor(time * e.walkFps + e.phase) % e.walkImgs.length];
       if (!images[imgKey]) imgKey = e.walkImgs[0];
     }
-    drawImg(imgKey, -s / 2, -s, s, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : e.type.startsWith('sandity') ? '#e0b050' : '#d33');
+    drawImg(imgKey, -s / 2, -s, s, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : e.type.startsWith('sandity') ? '#e0b050' : e.type === 'camel' ? '#b88a4a' : '#d33');
     ctx.restore();
     if (mouse.x >= 0) {
       const d = Math.hypot(mouse.x - e.x, mouse.y - e.y);
