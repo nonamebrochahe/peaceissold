@@ -36,6 +36,9 @@
   .tbtn.sel { background: #3a7; outline: 4px solid #ff0; }
   .tbtn.poor { opacity: .45; }
   .tbtn .ico { width: 36px; height: 36px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  /* Rainbow towers (BAKLAVADA): the green parts of the sprite cycle through every colour. White/black stay. */
+  .ico.rb { animation: rbHue 3s linear infinite; }
+  @keyframes rbHue { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
   .tbtn .ico.dogoda-mini { position:relative; background:none !important; filter:none !important; }
   .dogoda-mini img { position:absolute; object-fit:contain; image-rendering:pixelated; filter:none !important; -webkit-filter:none !important; }
   .dogoda-mini .mini-body { width:27px; height:27px; left:5px; top:0; z-index:1; }
@@ -72,13 +75,14 @@
   #menu #leafCv { z-index: 3 !important; }
   #menu h1, #menu .gemrow, #menu .rbtn { z-index: 4; }
   #maps > *, #inventory > *, #shopScreen > *, #end > * { z-index: 2; }
-  #inventoryCards, #shopCards { width:min(900px,100%); max-height:390px; overflow-y:auto; gap:12px; align-content:flex-start; padding:12px; display:flex; flex-wrap:wrap; justify-content:center; }
-  #inventoryCards .card, #shopCards .card { width:190px; height:215px; min-width:190px; max-width:190px; margin:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow:hidden; }
+  #inventoryCards { width:min(900px,100%); max-height:390px; overflow-y:auto; gap:12px; align-content:flex-start; padding:12px; display:flex; flex-wrap:wrap; justify-content:center; }
+  #inventoryCards .card { width:190px; height:215px; min-width:190px; max-width:190px; margin:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow:hidden; }
   .tower-level { color:#fff36a; font-size:10px; margin:5px 0; }
   .card-status { display:block; color:#b8ef9a; font-size:9px; line-height:1.6; margin-top:2px; }
   .tick { display:inline-block; color:#7dff6a; font-family:Arial, Helvetica, sans-serif; font-size:22px; font-weight:bold; line-height:1; text-shadow:2px 2px 0 #000; }
   /* Summon sprites jiggle (squash & stretch) like they do in the game. */
   .card.jiggle .ico { transform-origin:50% 100%; animation:jiggle .75s ease-in-out infinite; }
+  .card.jiggle .ico.rb { animation:jiggle .75s ease-in-out infinite, rbHue 3s linear infinite; }
   @keyframes jiggle {
     0%   { transform:scale(1,1) rotate(0deg); }
     20%  { transform:scale(1.10,.90) rotate(-5deg); }
@@ -93,6 +97,16 @@
   .xp-fill { height:100%; width:0%; background:#76e35c; }
   #summonResult { min-height:40px; max-width:700px; color:#fff36a; font-size:11px; line-height:2; margin:8px 0; }
   .shop-price { display:block; margin:7px 0; color:#ffd95a; font-size:10px; line-height:2; }
+
+  /* SUMMON CARDS (grassland / desert) */
+  #summonOptions { display:flex; flex-wrap:nowrap; justify-content:center; gap:28px; margin:10px 0 16px; }
+  .summon-card { width:230px; padding:8px; background:#7a5230; border:6px solid #3a200c; color:#fff3d6; font-family:inherit; font-size:11px; line-height:1.8;
+    text-shadow:2px 2px 0 #000; cursor:pointer; transition:transform .15s, background .15s; }
+  .summon-card:hover:not(:disabled) { background:#8f6340; transform:scale(1.05); }
+  .summon-card:disabled { opacity:.5; cursor:not-allowed; }
+  .summon-card img { display:block; width:100%; height:auto; min-height:90px; background:#3d2a1c; border:4px solid #000; margin-bottom:8px; image-rendering:auto; }
+  .summon-card .sc-name { display:block; font-size:14px; }
+  .summon-card .sc-price { display:block; color:#ffd95a; font-size:11px; margin-top:4px; }
 
   /* SUMMON REVEAL: slow suspense, then the tower pops in. */
   #shopScreen > #summonReveal { position:absolute; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,.82); animation:revealFade .5s ease-out both; }
@@ -170,8 +184,6 @@
   #promoInput { width:170px; min-width:0; padding:10px 8px; border:3px solid #24180d; background:#fff3d6; color:#24180d; font-family:inherit; font-size:9px; }
   #promoApply { padding:10px 8px; border:3px solid #24180d; background:#8b5a2b; color:#fff3d6; font-family:inherit; font-size:9px; cursor:pointer; }
   #promoApply:hover { background:#a06a35; }
-  #summonOptions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:8px 0; max-width:760px; }
-  #summonOptions .rbtn { min-width:190px; margin:3px; font-size:10px; padding:12px; }
 </style>
 </head>
 <body>
@@ -262,18 +274,24 @@
     <div class="xp-panel"><div id="towersPlayerLevel">PLAYER LEVEL 1</div><div class="xp-track"><div class="xp-fill" id="towersXpFill"></div></div><div id="towersXpText">0 / 100 XP</div></div>
   </div>
 
-  <!-- TOWER SHOP -->
+  <!-- TOWER SUMMON (cards) -->
   <div class="screen hidden" id="shopScreen">
     <h2>SUMMON TOWERS</h2>
     <div class="gemrow"><span class="gemico gi"></span><b class="gemcount">0</b></div>
-    <div style="font-size:10px;line-height:2;color:#fff3d6">ROLL A RANDOM TOWER · DUPLICATES UPGRADE IT</div>
+    <div style="font-size:10px;line-height:2;color:#fff3d6">PICK A CARD · DUPLICATES UPGRADE THE TOWER</div>
     <div id="summonResult">Spend gems to summon a tower.</div>
     <div id="summonOptions">
-      <button class="rbtn" id="summonCommon">COMMON · 75 GEMS</button>
-      <button class="rbtn" id="summonRare">RARE · 175 GEMS</button>
-      <button class="rbtn" id="summonLegendary">LEGENDARY · 350 GEMS</button>
+      <button class="summon-card" id="summonGrass" type="button">
+        <img src="images/textures/grasslandcard.png" alt="" onerror="this.style.visibility='hidden'">
+        <span class="sc-name">GRASSLAND</span>
+        <span class="sc-price" id="priceGrass">75 GEMS</span>
+      </button>
+      <button class="summon-card" id="summonDesert" type="button">
+        <img src="images/textures/desertcard.png" alt="" onerror="this.style.visibility='hidden'">
+        <span class="sc-name">DESERT</span>
+        <span class="sc-price" id="priceDesert">250 GEMS</span>
+      </button>
     </div>
-    <div class="row" id="shopCards"></div>
     <button class="rbtn small" id="btnShopBack">BACK</button>
 
     <!-- summon reveal overlay -->
@@ -307,12 +325,14 @@ const IMG = {
   redistan:   'images/enemies/redistan.png',
   atardeli:   'images/weapons/atardeli.png',
   knife:      'images/weapons/knife.png',
+  rainsword:  'images/weapons/rainsword.png', // BAKLAVADA's sword (green parts become rainbow)
   deli:       'images/projectiles/deli.png',
   delice:     'images/towers/delici.png',
   dolten:     'images/towers/dolten.png', // DOLTEN uses its original, untinted sprite
   dolten2:    'images/towers/dolten2.png', // optional: falls back to dolten.png if missing
   efe:        'images/towers/efe.png',
   dogoda:     'images/towers/dogoda.png',
+  baklavada:  'images/towers/baklavada.png', // secret tower (green parts become rainbow)
   guitar:     'images/projectiles/guitar.png',
   ampProjectile: 'images/projectiles/amp.png',
   boss: 'images/enemies/boss.png',
@@ -602,7 +622,9 @@ const loadingAssets = [
   'images/textures/sand.png', 'images/textures/sandpath.png', 'images/textures/cactus.png',
   'images/enemies/sandity.png', 'images/enemies/sandity1.png', 'images/enemies/sandity2.png', 'images/enemies/sandity3.png',
   'images/enemies/sandboss.png', 'images/enemies/sandboss2.png', 'images/enemies/boss.png',
-  'images/towers/max.png', 'images/towers/max2.png', 'images/towers/max3.png'
+  'images/towers/max.png', 'images/towers/max2.png', 'images/towers/max3.png',
+  'images/towers/baklavada.png', 'images/weapons/rainsword.png',
+  'images/textures/grasslandcard.png', 'images/textures/desertcard.png'
 ];
 const loadingScreen = document.getElementById('loadingScreen');
 const loadingStatus = document.getElementById('loadingStatus');
@@ -695,7 +717,13 @@ const TOWER_TYPES = [
   { id: 'max2', name: 'MAX', cost: 0, range: 0, cooldown: 0, damage: 0, size: 68, weaponLen: 0, body: 'max2', weapon: null, bullet: null, hue: 0,
     placeable: false, farm: true, income: 55, base: 'max', upgrade: 'max3', upCost: 600, description: 'Upgraded farm tower.' },
   { id: 'max3', name: 'MAX', cost: 0, range: 0, cooldown: 0, damage: 0, size: 76, weaponLen: 0, body: 'max3', weapon: null, bullet: null, hue: 0,
-    placeable: false, farm: true, income: 110, base: 'max', description: 'Final farm tower.' }
+    placeable: false, farm: true, income: 110, base: 'max', description: 'Final farm tower.' },
+  /* BAKLAVADA: SECRET tower (1% from the grassland card). Throws its rainbow sword like a boomerang;
+     the sword damages every enemy it passes through, both on the way out and on the way back. */
+  { id: 'baklavada', name: 'BAKLAVADA', cost: 300, range: 230, cooldown: 0.25, damage: 7, bulletSpeed: 560, bulletSize: 0,
+    size: 70, weaponLen: 50, body: 'baklavada', weapon: 'rainsword', bullet: null, hue: 0, placeable: true,
+    boomerang: true, rainbow: true, secret: true,
+    description: 'SECRET. Throws a rainbow sword like a boomerang that hits many enemies.' }
 ];
 
 /* Enemies: dmg = % of base health taken when they reach the base */
@@ -784,6 +812,65 @@ Object.keys(IMG).forEach(k => {
 // fallback to the DELICI sprite while dolten.png is loading/missing.
 const bodyOf = T => (T.id === 'dolten' || T.id === 'dogoda') ? T.body : (images[T.body] ? T.body : (T.fb || T.body));
 const hueOf = T => (T.id === 'dolten' || T.id === 'dogoda') ? 0 : (images[T.body] ? T.hue : (T.fbHue || T.hue));
+
+/* ================== RAINBOW SPRITES ==================
+   Every GREEN pixel of a sprite (eyes, body, sword...) is replaced with an animated rainbow.
+   White and black (and anything not green) are left exactly as they are. */
+const rainbowCache = {};
+function rainbowCanvas(key) {
+  const im = images[key];
+  if (!im) return null;
+  let c = rainbowCache[key];
+  if (c === undefined) {
+    c = null;
+    try {
+      const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+      const mk = () => { const cn = document.createElement('canvas'); cn.width = w; cn.height = h; return cn; };
+      const base = mk(), mask = mk(), out = mk();
+      const bx = base.getContext('2d'), mx = mask.getContext('2d');
+      bx.drawImage(im, 0, 0);
+      const src = bx.getImageData(0, 0, w, h), d = src.data;
+      const md = mx.createImageData(w, h), m = md.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+        if (a > 0 && g > r + 18 && g > b + 18) {
+          // brightness of the original green keeps a bit of shading in the rainbow
+          m[i] = 255; m[i + 1] = 255; m[i + 2] = 255; m[i + 3] = a;
+          d[i + 3] = 0; // remove it from the base layer
+        }
+      }
+      bx.putImageData(src, 0, 0);
+      mx.putImageData(md, 0, 0);
+      c = { w, h, base, mask, out, ox: out.getContext('2d'), stamp: -1 };
+    } catch (e) {
+      console.warn('Rainbow recolor unavailable for', key, '(serve the game from a web server, not file://):', e);
+      c = null;
+    }
+    rainbowCache[key] = c;
+  }
+  if (!c) return null;
+  if (c.stamp !== time) {
+    c.stamp = time;
+    const o = c.ox;
+    o.globalCompositeOperation = 'source-over';
+    o.clearRect(0, 0, c.w, c.h);
+    o.drawImage(c.mask, 0, 0);
+    o.globalCompositeOperation = 'source-in';
+    const gr = o.createLinearGradient(0, 0, c.w, c.h);
+    const shift = time * 140;
+    for (let i = 0; i <= 6; i++) gr.addColorStop(i / 6, 'hsl(' + Math.round((i * 60 + shift) % 360) + ',100%,55%)');
+    o.fillStyle = gr;
+    o.fillRect(0, 0, c.w, c.h);
+    o.globalCompositeOperation = 'source-over';
+    o.drawImage(c.base, 0, 0);
+  }
+  return c.out;
+}
+function drawRainbow(name, x, y, w, h, fallback) {
+  const rc = rainbowCanvas(name);
+  if (rc) ctx.drawImage(rc, x, y, w, h);
+  else drawImg(name, x, y, w, h, fallback);
+}
 
 /* ================== STATE ================== */
 const cv = document.getElementById('game');
@@ -883,7 +970,7 @@ function buildShop() {
     if (t.id === 'dogoda') {
       b.innerHTML = '<span class="ico dogoda-mini"><img class="mini-body" src="' + IMG.dogoda + '" alt=""><img class="mini-amp" src="' + IMG.ampProjectile + '" alt=""><img class="mini-guitar" src="' + IMG.guitar + '" alt=""></span><span>' + t.cost + '</span>';
     } else {
-      b.innerHTML = '<span class="ico"></span><span>' + t.cost + '</span>';
+      b.innerHTML = '<span class="ico' + (t.rainbow ? ' rb' : '') + '"></span><span>' + t.cost + '</span>';
     }
     b.onclick = () => selectTower(selected === t.id ? null : t.id);
     shop.appendChild(b);
@@ -899,7 +986,8 @@ function refreshShop() {
       ico.style.backgroundImage = images[k] ? 'url(' + IMG[k] + ')' : 'none';
       ico.style.backgroundColor = images[k] ? 'transparent' : '#9b59b6';
       const h = hueOf(t);
-      ico.style.filter = h ? 'hue-rotate(' + h + 'deg)' : 'none';
+      if (t.rainbow) ico.style.filter = ''; // the CSS rainbow animation controls it
+      else ico.style.filter = h ? 'hue-rotate(' + h + 'deg)' : 'none';
     } else {
       ico.style.backgroundImage = 'none';
       ico.style.backgroundColor = 'transparent';
@@ -925,7 +1013,7 @@ function refreshInfo() {
   $('iName').textContent = T.name;
   $('iDmg').textContent = T.farm ? 'FARM: +' + Math.round(T.income) + ' G / WAVE'
     : T.support ? 'SUPPORT ONLY · BUFF: +' + Math.round((T.attackBoost - 1) * 100) + '% ATK'
-    : 'DAMAGE: ' + (Math.round(T.damage * 10) / 10) + (T.twin ? ' x2' : '');
+    : 'DAMAGE: ' + (Math.round(T.damage * 10) / 10) + (T.twin ? ' x2' : '') + (T.boomerang ? ' · PIERCE' : '');
   $('iRng').textContent = T.farm ? 'NO ATTACK' : T.support ? 'BUFF RANGE: ' + T.supportRange : 'RANGE: ' + Math.round(T.range);
   const targetButton = $('btnTargetMode');
   const targetModes = ['closest', 'leastHealth', 'strongest', 'first', 'last'];
@@ -983,7 +1071,7 @@ function sellTower() {
 }
 $('btnSell').onclick = sellTower;
 
-/* ================== INVENTORY + GEM SHOP ================== */
+/* ================== INVENTORY + SUMMON ================== */
 // Cards show only: sprite, name, level, and a status (tick when owned). No build cost, no description.
 const TICK_HTML = '<span class="tick">✓</span>';
 function towerPreviewHTML(t) {
@@ -991,7 +1079,7 @@ function towerPreviewHTML(t) {
   const iconStyle = (IMG[k] ? 'background-image:url(' + IMG[k] + ');background-color:transparent;' : 'background-color:#9b59b6;') + (h ? 'filter:hue-rotate(' + h + 'deg);' : '');
   return t.id === 'dogoda'
     ? '<div class="ico dogoda-shop-preview" style="width:96px;height:72px;margin:0 auto 5px;flex:none"><img class="preview-body" src="' + IMG.dogoda + '" alt="DOGODA"><img class="preview-amp" src="' + IMG.ampProjectile + '" alt="AMP"><img class="preview-guitar" src="' + IMG.guitar + '" alt="GUITAR"></div>'
-    : '<div class="ico" style="width:72px;height:72px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center;margin:0 auto 5px;' + iconStyle + '"></div>';
+    : '<div class="ico' + (t.rainbow ? ' rb' : '') + '" style="width:72px;height:72px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center;margin:0 auto 5px;' + iconStyle + '"></div>';
 }
 function towerCard(t, statusHTML, buttonLabel, onBuy, disabled=false, opts={}) {
   const c = document.createElement('div');
@@ -1022,18 +1110,19 @@ function buildInventory() {
   if(!box.children.length) box.textContent='No towers yet. Go to SUMMON!';
   refreshPlayerXP(); setGemIcons();
 }
-const SUMMON_COSTS = { common: 75, rare: 175, legendary: 350 };
-const TOWER_RARITY = { delici: 'COMMON', efe: 'COMMON', max: 'RARE', dogoda: 'LEGENDARY' };
+// Two summon cards. Grassland: DELICI / EFE (+1% secret BAKLAVADA). Desert: DOGODA / MAX.
+const SUMMON_COSTS = { grass: 75, desert: 250 };
+const SUMMON_POOLS = {
+  grass:  [{ id: 'delici', w: 49.5 }, { id: 'efe', w: 49.5 }, { id: 'baklavada', w: 1 }],
+  desert: [{ id: 'dogoda', w: 50 }, { id: 'max', w: 50 }]
+};
+const TOWER_RARITY = { delici: 'COMMON', efe: 'COMMON', max: 'RARE', dogoda: 'LEGENDARY', baklavada: 'SECRET' };
 let summoning = false, revealTimer = null, revealPending = null;
-function summonTower(rarity = 'common') {
+function summonTower(kind = 'grass') {
   if(summoning) return;
-  const cost = SUMMON_COSTS[rarity] || SUMMON_COSTS.common;
+  const cost = SUMMON_COSTS[kind] || SUMMON_COSTS.grass;
   if(gems < cost) { flash('NOT ENOUGH GEMS! NEED ' + cost); return; }
-  const pool = rarity === 'common'
-    ? [{id:'delici',w:50},{id:'efe',w:50}]
-    : rarity === 'rare'
-      ? [{id:'max',w:100}]
-      : [{id:'dogoda',w:100}];
+  const pool = SUMMON_POOLS[kind] || SUMMON_POOLS.grass;
   gems -= cost;
   let roll = Math.random() * pool.reduce((n,x)=>n+x.w,0), picked = pool[0].id;
   for(const item of pool){ roll-=item.w; if(roll<=0){picked=item.id;break;} }
@@ -1046,7 +1135,7 @@ function summonTower(rarity = 'common') {
 }
 function playSummonReveal(t, duplicate) {
   summoning = true;
-  ['summonCommon','summonRare','summonLegendary'].forEach(id => { if($(id)) $(id).disabled = true; });
+  buildTowerShop();
   const ov = $('summonReveal'), box = $('revealBox'), txt = $('revealText'), ok = $('btnRevealOk'), fl = $('revealFlash');
   clearTimeout(revealTimer);
   ov.classList.remove('hidden');
@@ -1079,21 +1168,18 @@ function closeSummonReveal() {
   buildInventory(); buildTowerShop(); buildShop();
 }
 $('btnRevealOk').onclick = closeSummonReveal;
+// The summon screen no longer lists towers: it only keeps the two cards enabled/disabled by gems.
 function buildTowerShop() {
-  const box=$('shopCards'); if(!box) return; box.innerHTML='';
-  // Summon pool preview: every tower has the same card dimensions as Towers.
-  TOWER_TYPES.filter(t=>t.placeable).forEach(t=>{
-    const isOwned=!!owned[t.id];
-    box.appendChild(towerCard(t,isOwned?TICK_HTML:('SUMMON POOL · '+(TOWER_RARITY[t.id]||'COMMON')),isOwned?'LEVEL '+towerLevelOf(t.id):'LOCKED',null,true,{ noName: true, jiggle: true }));
+  [['summonGrass','grass'],['summonDesert','desert']].forEach(([id,kind]) => {
+    const btn=$(id); if(btn) btn.disabled=summoning || gems<SUMMON_COSTS[kind];
   });
-  [['summonCommon','common'],['summonRare','rare'],['summonLegendary','legendary']].forEach(([id,rarity]) => {
-    const btn=$(id); if(btn) btn.disabled=summoning || gems<SUMMON_COSTS[rarity];
-  });
+  const pg=$('priceGrass'), pd=$('priceDesert');
+  if(pg) pg.textContent=SUMMON_COSTS.grass+' GEMS';
+  if(pd) pd.textContent=SUMMON_COSTS.desert+' GEMS';
   setGemIcons(); refreshPlayerXP();
 }
-$('summonCommon').onclick = () => summonTower('common');
-$('summonRare').onclick = () => summonTower('rare');
-$('summonLegendary').onclick = () => summonTower('legendary');
+$('summonGrass').onclick = () => summonTower('grass');
+$('summonDesert').onclick = () => summonTower('desert');
 
 /* ================== GAME ================== */
 function genCacti() {
@@ -1462,6 +1548,28 @@ function endGame(win) {
 }
 
 /* ================== UPDATE ================== */
+// BAKLAVADA's sword: flies out to the edge of its range, spins, then returns to the tower.
+// Each enemy can be hit once per pass (once going out, once coming back), so it pierces through crowds.
+function updateBoomerang(t, dt) {
+  const T = t.type, b = t.boom;
+  b.spin += 20 * dt;
+  const speed = T.bulletSpeed;
+  const gx = b.out ? b.tx : t.x, gy = b.out ? b.ty : t.y;
+  const dx = gx - b.x, dy = gy - b.y, dist = Math.hypot(dx, dy), step = speed * dt;
+  if (dist <= step) {
+    b.x = gx; b.y = gy;
+    if (b.out) { b.out = false; b.hit = new Set(); }
+    else { t.boom = null; t.punch = 0.6; return; }
+  } else {
+    b.x += dx / dist * step; b.y += dy / dist * step;
+  }
+  const dmg = T.damage * (t.buffMultiplier || 1);
+  for (const e of enemies) {
+    if (e.hp <= 0 || b.hit.has(e)) continue;
+    if (Math.hypot(e.x - b.x, e.y - b.y) <= e.size / 2 + 16) { e.hp -= dmg; b.hit.add(e); }
+  }
+}
+
 function update(dt) {
   updateWaveCountdown(dt);
   updateDogodaRhythm(dt);
@@ -1547,7 +1655,15 @@ function update(dt) {
       let d = ang - t.aim;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       t.aim += d * Math.min(1, dt * 14);
-      if (t.cd <= 0) {
+      if (T.boomerang) {
+        // Throw the sword once it is back in hand.
+        if (t.cd <= 0 && !t.boom) {
+          t.cd = T.cooldown / ((t.buffMultiplier || 1) * attackMultiplier());
+          t.punch = 1;
+          // Fly in the target's direction all the way out to the tower's range, so it pierces everything on the line.
+          t.boom = { x: t.x, y: t.y, tx: t.x + Math.cos(ang) * T.range, ty: t.y + Math.sin(ang) * T.range, out: true, spin: ang, hit: new Set() };
+        }
+      } else if (t.cd <= 0) {
         t.cd = T.cooldown / ((t.buffMultiplier || 1) * attackMultiplier());
         t.punch = 1;
         if (T.melee) best.hp -= T.damage * (t.buffMultiplier || 1);
@@ -1568,6 +1684,9 @@ function update(dt) {
       }
     }
   }
+
+  // Boomerang swords keep flying even when no enemy is in range (or the tower is disabled).
+  for (const t of towers) if (t.boom) updateBoomerang(t, dt);
 
   for (const b of bullets) {
     if (!b.target || b.target.hp <= 0 || !enemies.includes(b.target)) { b.dead = true; continue; }
@@ -1693,7 +1812,7 @@ function render() {
     ctx.translate(t.x + shakeX, t.y + s / 2 + shakeY);
     if (T.id === 'dogoda') ctx.rotate(Math.sin(time * 43 + t.ty) * musicPulse * 0.045);
     ctx.scale(1 - sq + musicPulse * (T.id === 'dogoda' ? 0.055 : 0), 1 + sq + musicPulse * (T.id === 'dogoda' ? 0.075 : 0));
-    drawImg(bodyOf(T), -s / 2, -s, s, s, '#9b59b6');
+    (T.rainbow ? drawRainbow : drawImg)(bodyOf(T), -s / 2, -s, s, s, '#9b59b6');
     if ((t.disabledTimer || 0) > 0) {
       ctx.filter = 'none';
       ctx.fillStyle = 'rgba(180,190,200,.42)';
@@ -1718,17 +1837,38 @@ function render() {
       ctx.restore();
     }
 
+    // Held weapon. BAKLAVADA's sword disappears from its hand while it is flying as a boomerang.
+    if (!(T.boomerang && t.boom)) {
+      ctx.save();
+      if ((t.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
+      else setHue(T.id === 'dogoda' ? 0 : T.hue);
+      ctx.translate(t.x + shakeX, t.y + bop * 20 + shakeY);
+      ctx.rotate(t.aim);
+      ctx.translate(T.melee ? t.punch * 16 : -t.punch * 6, 0);
+      if (T.melee) ctx.rotate(-t.punch * 0.9);
+      const w = (T.weaponLen || 0) + 8, h = T.twin ? 22 : 28;
+      const gunOffsets = T.twin ? [-10, 10] : [0]; // DOLTEN holds two guns
+      const wimg = T.rainbow ? (rainbowCanvas(T.weapon) || images[T.weapon]) : images[T.weapon];
+      if (T.weapon && wimg) { for (const o of gunOffsets) ctx.drawImage(wimg, 0, o - h / 2, w, h); }
+      else if (!T.support && !T.farm) { ctx.fillStyle = '#ccc'; for (const o of gunOffsets) ctx.fillRect(0, o - 4, w, 8); }
+      ctx.restore();
+    }
+  }
+
+  // Flying rainbow swords (BAKLAVADA boomerangs), spinning.
+  for (const t of towers) {
+    if (!t.boom) continue;
+    const T = t.type, b = t.boom;
+    const im = rainbowCanvas(T.weapon) || images[T.weapon];
+    const sz = (T.weaponLen || 40) + 22;
     ctx.save();
     if ((t.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
-    else setHue(T.id === 'dogoda' ? 0 : T.hue);
-    ctx.translate(t.x + shakeX, t.y + bop * 20 + shakeY);
-    ctx.rotate(t.aim);
-    ctx.translate(T.melee ? t.punch * 16 : -t.punch * 6, 0);
-    if (T.melee) ctx.rotate(-t.punch * 0.9);
-    const w = (T.weaponLen || 0) + 8, h = T.twin ? 22 : 28;
-    const gunOffsets = T.twin ? [-10, 10] : [0]; // DOLTEN holds two guns
-    if (T.weapon && images[T.weapon]) { for (const o of gunOffsets) ctx.drawImage(images[T.weapon], 0, o - h / 2, w, h); }
-    else if (!T.support && !T.farm) { ctx.fillStyle = '#ccc'; for (const o of gunOffsets) ctx.fillRect(0, o - 4, w, 8); }
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.spin);
+    if (im) {
+      const iw = im.width || im.naturalWidth || 1, ih = im.height || im.naturalHeight || 1;
+      ctx.drawImage(im, -sz / 2, -sz / 2 * (ih / iw), sz, sz * (ih / iw));
+    } else { ctx.fillStyle = '#fff'; ctx.fillRect(-sz / 2, -3, sz, 6); }
     ctx.restore();
   }
 
@@ -1923,6 +2063,7 @@ save();
 setGemIcons();
 reset();
 running = false;
+buildTowerShop();
 requestAnimationFrame(t => { last = t; loop(t); });
 
 function fit() {
