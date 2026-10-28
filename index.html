@@ -114,6 +114,7 @@
   /* SUMMON REVEAL: slow suspense, then the tower pops in. */
   #shopScreen > #summonReveal { position:absolute; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,.82); animation:revealFade .5s ease-out both; }
   @keyframes revealFade { from { opacity:0; } to { opacity:1; } }
+  #revealStage, #revealText, #btnRevealOk { position:relative; z-index:2; }
   #revealStage { width:300px; height:330px; display:flex; align-items:center; justify-content:center; }
   #revealBox.charging { width:140px; height:140px; background:#8b5a2b; border:6px solid #3a200c; box-shadow:inset 0 6px 0 #a67440, inset 0 -6px 0 #6b4423, 0 0 0 rgba(255,230,120,0);
     display:flex; align-items:center; justify-content:center; font-size:60px; color:#fff3d6; text-shadow:4px 4px 0 #3a200c; animation:charge 1.9s ease-in forwards; }
@@ -133,13 +134,29 @@
     80%  { transform:scale(1.2) rotate(-1deg); }
     100% { transform:scale(1.3) rotate(0deg); opacity:1; }
   }
-  #revealFlash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
+  #revealFlash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:5; }
   #revealFlash.go { animation:flashOut .7s ease-out; }
   @keyframes flashOut { 0% { opacity:.95; } 100% { opacity:0; } }
   #revealText { min-height:30px; margin-top:14px; font-size:12px; line-height:2; color:#fff3d6; text-shadow:2px 2px 0 #000; }
   #revealText.dots::after { content:""; animation:dots 1.2s steps(4) infinite; }
   @keyframes dots { 0% { content:""; } 25% { content:"."; } 50% { content:".."; } 75% { content:"..."; } }
   #btnRevealOk { margin-top:10px; }
+
+  /* SECRET REVEAL (BAKLAVADA): the screen goes black, rainbow question marks appear, then the tower shows up. */
+  #secretLayer { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
+  #shopScreen > #summonReveal.secret { animation:secretDark 1.3s ease-in both; background:#000; }
+  @keyframes secretDark { from { background:rgba(0,0,0,0); } to { background:rgba(0,0,0,1); } }
+  #revealBox.secretbox { opacity:0; font-size:150px; line-height:1; color:#f33; text-shadow:6px 6px 0 #000, 0 0 30px rgba(255,255,255,.5);
+    animation:secretShake .14s linear infinite, rbHue 2s linear infinite; }
+  #revealBox.secretbox.show { opacity:1; animation:secretShake .14s linear infinite, rbHue 2s linear infinite, secretGrow 2.6s ease-in forwards; }
+  @keyframes secretShake {
+    0% { margin:0 0 0 0; } 25% { margin:-4px 0 0 4px; } 50% { margin:4px 0 0 -4px; } 75% { margin:-3px 0 0 -3px; } 100% { margin:0; }
+  }
+  @keyframes secretGrow { from { transform:scale(.4); } to { transform:scale(1.7); } }
+  .qm { position:absolute; font-family:inherit; font-weight:bold; color:#f33; text-shadow:4px 4px 0 #000; line-height:1;
+    animation:qmPop .45s cubic-bezier(.2,1.6,.4,1) both, rbHue 2.4s linear infinite; }
+  @keyframes qmPop { from { transform:scale(0) rotate(-30deg); opacity:0; } to { transform:scale(1) rotate(var(--r,0deg)); opacity:1; } }
+  .rbtext { display:inline-block; color:#f33; text-shadow:2px 2px 0 #000; animation:rbHue 1.6s linear infinite; }
 
   .tree { position: absolute !important; bottom: 0; width: 280px; height: 600px; object-fit: contain; object-position: left bottom; z-index: 1 !important; transform-origin: 50% 100%; pointer-events: none; }
   .tree.left { left: -20px; animation: swayL 8s ease-in-out infinite; }
@@ -299,6 +316,7 @@
 
     <!-- summon reveal overlay -->
     <div id="summonReveal" class="hidden">
+      <div id="secretLayer"></div>
       <div id="revealFlash"></div>
       <div id="revealStage"><div id="revealBox" class="charging">?</div></div>
       <div id="revealText" class="dots">SUMMONING</div>
@@ -1149,6 +1167,11 @@ const SUMMON_POOLS = {
 };
 const TOWER_RARITY = { delici: 'COMMON', efe: 'COMMON', max: 'RARE', dogoda: 'LEGENDARY', baklavada: 'SECRET' };
 let summoning = false, revealTimer = null, revealPending = null;
+let secretTimers = []; // timeouts/intervals used by the BAKLAVADA secret reveal
+function clearSecretTimers() {
+  secretTimers.forEach(id => { clearTimeout(id); clearInterval(id); });
+  secretTimers = [];
+}
 function summonTower(kind = 'grass') {
   if(summoning) return;
   const cost = SUMMON_COSTS[kind] || SUMMON_COSTS.grass;
@@ -1164,35 +1187,84 @@ function summonTower(kind = 'grass') {
   // The result is already saved; the reveal is a slow build-up followed by a sudden "pat!" pop.
   playSummonReveal(t, duplicate);
 }
+function showRevealedCard(t, duplicate, secret) {
+  const ov = $('summonReveal'), box = $('revealBox'), txt = $('revealText'), ok = $('btnRevealOk'), fl = $('revealFlash');
+  fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
+  box.className = 'revealed';
+  box.style.opacity = '';
+  box.innerHTML = '';
+  $('secretLayer').innerHTML = '';
+  box.appendChild(towerCard(t, duplicate ? 'DUPLICATE! LEVEL UP' : 'NEW TOWER!', null, null, false, { noName: true, jiggle: true }));
+  txt.className = '';
+  const rarity = TOWER_RARITY[t.id] || 'COMMON';
+  if (secret) {
+    txt.innerHTML = '<span class="rbtext">SECRET TOWER!</span><br><span style="color:#fff36a">RARITY: </span><span class="rbtext">' + rarity + '</span>';
+  } else {
+    txt.innerHTML = '<span style="color:' + (duplicate ? '#ffcf69' : '#aaff9c') + '">' + (duplicate ? 'DUPLICATE! AUTO UPGRADE' : 'NEW TOWER UNLOCKED!') + '</span><br><span style="color:#fff36a">RARITY: ' + rarity + '</span>';
+  }
+  revealTimer = setTimeout(() => { ok.classList.remove('hidden'); }, 700);
+}
 function playSummonReveal(t, duplicate) {
   summoning = true;
   buildTowerShop();
-  const ov = $('summonReveal'), box = $('revealBox'), txt = $('revealText'), ok = $('btnRevealOk'), fl = $('revealFlash');
+  const ov = $('summonReveal'), box = $('revealBox'), txt = $('revealText'), ok = $('btnRevealOk'), fl = $('revealFlash'), layer = $('secretLayer');
   clearTimeout(revealTimer);
+  clearSecretTimers();
+  layer.innerHTML = '';
   ov.classList.remove('hidden');
+  ov.classList.remove('secret');
   ok.classList.add('hidden');
   fl.classList.remove('go');
+  revealPending = { t, duplicate };
+  const secret = t.id === 'baklavada' || TOWER_RARITY[t.id] === 'SECRET';
+
+  if (secret) {
+    // SECRET reveal: 1) the screen fades to black, 2) a giant rainbow "?" and rainbow question marks pop up all over,
+    // 3) a white flash and the secret tower appears with SECRET rarity.
+    ov.classList.add('secret');
+    box.className = 'secretbox';
+    box.style.opacity = '';
+    box.textContent = '?';
+    txt.className = '';
+    txt.textContent = '';
+    secretTimers.push(setTimeout(() => { box.className = 'secretbox show'; }, 1300));
+    secretTimers.push(setTimeout(() => {
+      const spawn = setInterval(() => {
+        const q = document.createElement('span');
+        q.className = 'qm';
+        q.textContent = '?';
+        q.style.left = (Math.random() * 92) + '%';
+        q.style.top = (Math.random() * 90) + '%';
+        q.style.fontSize = (28 + Math.random() * 80) + 'px';
+        q.style.setProperty('--r', (Math.random() * 60 - 30) + 'deg');
+        q.style.animationDelay = '0s, ' + (-Math.random() * 2.4).toFixed(2) + 's';
+        layer.appendChild(q);
+      }, 70);
+      secretTimers.push(spawn);
+    }, 1700));
+    secretTimers.push(setTimeout(() => {
+      clearSecretTimers();
+      showRevealedCard(t, duplicate, true);
+    }, 4400));
+    return;
+  }
+
   box.className = 'charging';
+  box.style.opacity = '';
   box.innerHTML = '?';
   txt.className = 'dots';
   txt.textContent = 'SUMMONING';
-  revealPending = { t, duplicate };
   // Slow build-up (box grows, shakes and glows for ~1.9s), then pop.
-  revealTimer = setTimeout(() => {
-    fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
-    box.className = 'revealed';
-    box.innerHTML = '';
-    box.appendChild(towerCard(t, duplicate ? 'DUPLICATE! LEVEL UP' : 'NEW TOWER!', null, null, false, { noName: true, jiggle: true }));
-    txt.className = '';
-    txt.innerHTML = '<span style="color:' + (duplicate ? '#ffcf69' : '#aaff9c') + '">' + (duplicate ? 'DUPLICATE! AUTO UPGRADE' : 'NEW TOWER UNLOCKED!') + '</span><br><span style="color:#fff36a">RARITY: ' + (TOWER_RARITY[t.id] || 'COMMON') + '</span>';
-    revealTimer = setTimeout(() => { ok.classList.remove('hidden'); }, 700);
-  }, 1950);
+  revealTimer = setTimeout(() => showRevealedCard(t, duplicate, false), 1950);
 }
 function closeSummonReveal() {
   if (!revealPending) return;
   clearTimeout(revealTimer);
+  clearSecretTimers();
   const { t, duplicate } = revealPending;
   revealPending = null;
+  $('secretLayer').innerHTML = '';
+  $('summonReveal').classList.remove('secret');
   $('summonReveal').classList.add('hidden');
   summoning = false;
   $('summonResult').innerHTML = '<span style="color:'+(duplicate?'#ffcf69':'#aaff9c')+'">'+(duplicate?'DUPLICATE! AUTO UPGRADE':'NEW TOWER UNLOCKED!')+'</span><br><strong>LEVEL '+towerLevelOf(t.id)+'</strong>';
