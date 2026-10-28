@@ -118,6 +118,32 @@
   #revealStage { width:300px; height:330px; display:flex; align-items:center; justify-content:center; }
   #revealBox.charging { width:140px; height:140px; background:#8b5a2b; border:6px solid #3a200c; box-shadow:inset 0 6px 0 #a67440, inset 0 -6px 0 #6b4423, 0 0 0 rgba(255,230,120,0);
     display:flex; align-items:center; justify-content:center; font-size:60px; color:#fff3d6; text-shadow:4px 4px 0 #3a200c; animation:charge 1.9s ease-in forwards; }
+  /* Summon reveal is a collectible card pack, not a plain question-mark box. */
+  #revealBox.charging {
+    position:relative; width:190px; height:245px; flex-direction:column;
+    background:linear-gradient(145deg,#b87a36 0%,#70401f 48%,#3a200c 100%);
+    border:7px solid #160d06; border-radius:5px;
+    box-shadow:inset 0 0 0 4px #e6bd69, inset 0 0 0 9px #70401f, 0 12px 0 #160d06, 0 0 28px rgba(255,210,90,.25);
+    font-size:74px; animation:charge 1.9s ease-in forwards;
+  }
+  #revealBox.charging::before {
+    content:"SUMMON"; position:absolute; top:15px; left:0; right:0;
+    color:#fff3d6; font-family:inherit; font-size:13px; letter-spacing:1px;
+    text-shadow:3px 3px #3a200c; text-align:center;
+  }
+  #revealBox.charging::after {
+    content:"CARD"; position:absolute; bottom:15px; left:0; right:0;
+    color:#ffd95a; font-family:inherit; font-size:14px; text-shadow:3px 3px #3a200c;
+    text-align:center;
+  }
+  #revealBox.tearing { animation:packTear .38s ease-in both !important; }
+  @keyframes packTear {
+    0% { transform:scale(1.2) rotate(0); clip-path:inset(0 0 0 0); }
+    35% { transform:scale(1.28) rotate(-4deg); clip-path:polygon(0 0,100% 0,96% 15%,100% 30%,95% 43%,100% 58%,96% 75%,100% 100%,0 100%); }
+    100% { transform:translateY(-90px) scale(.75) rotate(10deg); opacity:0; clip-path:polygon(0 0,100% 0,96% 15%,100% 30%,95% 43%,100% 58%,96% 75%,100% 100%,0 100%); }
+  }
+  #revealStage { perspective:700px; }
+  #revealBox.revealed .card { box-shadow:0 0 28px rgba(255,225,90,.45); }
   @keyframes charge {
     0%   { transform:scale(.6) rotate(0deg); opacity:.2; box-shadow:inset 0 6px 0 #a67440, inset 0 -6px 0 #6b4423, 0 0 0 rgba(255,230,120,0); }
     18%  { transform:scale(1) rotate(0deg); opacity:1; }
@@ -128,6 +154,8 @@
     100% { transform:scale(1.42) rotate(-9deg); box-shadow:inset 0 6px 0 #a67440, inset 0 -6px 0 #6b4423, 0 0 90px rgba(255,250,200,1); }
   }
   #revealBox.revealed .card { margin:0; cursor:default; pointer-events:none; width:190px; animation:revealPop .6s cubic-bezier(.2,1.5,.4,1) both; }
+  #revealBox.tower-rising .card { animation:revealPop .6s cubic-bezier(.2,1.5,.4,1) both, towerRise .6s ease-out both; }
+  @keyframes towerRise { from { transform:translateY(110px) scale(.35); opacity:0; } to { transform:translateY(0) scale(1.3); opacity:1; } }
   @keyframes revealPop {
     0%   { transform:scale(0) rotate(-14deg); opacity:0; }
     55%  { transform:scale(1.55) rotate(3deg); opacity:1; }
@@ -1159,10 +1187,10 @@ function buildInventory() {
   if(!box.children.length) box.textContent='No towers yet. Go to SUMMON!';
   refreshPlayerXP(); setGemIcons();
 }
-// Two summon cards. Grassland: DELICI / EFE (+1% secret BAKLAVADA). Desert: DOGODA / MAX.
+// Two summon cards. BAKLAVADA is an ultra-rare secret (about 0.1% of Grassland summons). Desert: DOGODA / MAX.
 const SUMMON_COSTS = { grass: 75, desert: 250 };
 const SUMMON_POOLS = {
-  grass:  [{ id: 'delici', w: 49.5 }, { id: 'efe', w: 49.5 }, { id: 'baklavada', w: 1 }],
+  grass:  [{ id: 'delici', w: 49.95 }, { id: 'efe', w: 49.95 }, { id: 'baklavada', w: 0.1 }],
   desert: [{ id: 'dogoda', w: 50 }, { id: 'max', w: 50 }]
 };
 const TOWER_RARITY = { delici: 'COMMON', efe: 'COMMON', max: 'RARE', dogoda: 'LEGENDARY', baklavada: 'SECRET' };
@@ -1195,6 +1223,7 @@ function showRevealedCard(t, duplicate, secret) {
   box.innerHTML = '';
   $('secretLayer').innerHTML = '';
   box.appendChild(towerCard(t, duplicate ? 'DUPLICATE! LEVEL UP' : 'NEW TOWER!', null, null, false, { noName: true, jiggle: true }));
+  box.classList.add('tower-rising');
   txt.className = '';
   const rarity = TOWER_RARITY[t.id] || 'COMMON';
   if (secret) {
@@ -1203,6 +1232,15 @@ function showRevealedCard(t, duplicate, secret) {
     txt.innerHTML = '<span style="color:' + (duplicate ? '#ffcf69' : '#aaff9c') + '">' + (duplicate ? 'DUPLICATE! AUTO UPGRADE' : 'NEW TOWER UNLOCKED!') + '</span><br><span style="color:#fff36a">RARITY: ' + rarity + '</span>';
   }
   revealTimer = setTimeout(() => { ok.classList.remove('hidden'); }, 700);
+}
+let lastRevealTapAt = 0;
+function fastForwardSummonReveal() {
+  if (!revealPending) return;
+  clearTimeout(revealTimer);
+  clearSecretTimers();
+  const pending = revealPending;
+  const secret = pending.t.id === 'baklavada' || TOWER_RARITY[pending.t.id] === 'SECRET';
+  showRevealedCard(pending.t, pending.duplicate, secret);
 }
 function playSummonReveal(t, duplicate) {
   summoning = true;
@@ -1271,6 +1309,20 @@ function closeSummonReveal() {
   buildInventory(); buildTowerShop(); buildShop();
 }
 $('btnRevealOk').onclick = closeSummonReveal;
+// Tap/click the reveal twice quickly to skip the suspense animation.
+// The summon result is already rolled and saved, so skipping never changes the reward.
+$('summonReveal').addEventListener('click', (event) => {
+  if (!revealPending) return;
+  if (event.target && event.target.closest && event.target.closest('#btnRevealOk')) return;
+  const now = performance.now();
+  if (now - lastRevealTapAt <= 420) {
+    lastRevealTapAt = 0;
+    if ($('revealBox').classList.contains('revealed')) closeSummonReveal();
+    else fastForwardSummonReveal();
+  } else {
+    lastRevealTapAt = now;
+  }
+});
 // The summon screen no longer lists towers: it only keeps the two cards enabled/disabled by gems.
 function buildTowerShop() {
   [['summonGrass','grass'],['summonDesert','desert']].forEach(([id,kind]) => {
