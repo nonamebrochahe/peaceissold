@@ -2454,7 +2454,7 @@ function render() {
     ctx.save();
     ctx.translate(e.x + (e.isBoss ? Math.sin(time * 10 + e.phase) * 1.8 : 0), e.y + s / 2 - hop);
     if (e.isBoss) ctx.rotate(bossJiggle * 0.045);
-    ctx.scale((1 + sq) * e.flip, 1 - sq);
+    ctx.scale((1 + sq) * e.flip * (e.type === 'camel' ? -1 : 1), 1 - sq);
     // Walk animation: desert boss = sandboss/sandboss2, fast sandity = sandity1/2/3.
     let imgKey = e.img;
     if (e.walkImgs) {
