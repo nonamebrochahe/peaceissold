@@ -114,20 +114,22 @@
   /* SUMMON REVEAL: slow suspense, then the tower pops in. */
   #shopScreen > #summonReveal { position:absolute; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,.82); animation:revealFade .5s ease-out both; }
   @keyframes revealFade { from { opacity:0; } to { opacity:1; } }
-  #revealStage, #revealText, #btnRevealOk { position:relative; z-index:2; }
-  #revealStage { width:320px; height:350px; display:flex; align-items:center; justify-content:center; perspective:900px; }
+  #revealStage, #revealText, #btnRevealOk { position:absolute; z-index:2; }
+  #revealStage { left:50%; top:48%; transform:translate(-50%,-50%); width:min(92%,560px); height:350px; display:flex; align-items:center; justify-content:center; perspective:900px; }
+  #revealText { left:50%; bottom:62px; transform:translateX(-50%); width:92%; margin:0; }
+  #btnRevealOk { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); margin:0; }
   /* Use the PNG's own aspect ratio, so there are no fake side gutters. */
   #revealBox.charging {
     position:relative; width:230px; height:300px; flex:none; display:block;
     background:transparent; border:0; border-radius:0; box-shadow:none;
     padding:0; margin:0; font-size:0; overflow:visible; isolation:isolate;
-    animation:charge 1.9s ease-in forwards;
+    animation:charge 1.9s ease-in forwards; transform-origin:50% 50%;
   }
   #revealBox.charging::before, #revealBox.charging::after { content:none !important; }
   .pack-tear-half { position:absolute; inset:0; overflow:hidden; pointer-events:none; will-change:transform,opacity; }
   .pack-tear-half img { position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
    /* Keep the reveal centered and reserve a stable area for rarity text below it. */
-   #revealStage { position:relative; width:100%; height:350px; flex:0 0 350px; display:flex; align-items:center; justify-content:center; }
+   #revealStage { position:absolute; left:50%; top:48%; transform:translate(-50%,-50%); width:min(92%,560px); height:350px; flex:0 0 350px; display:flex; align-items:center; justify-content:center; }
    #revealBox { margin:0 auto; }
    #revealText { position:relative; z-index:2; flex:0 0 auto; min-height:58px; height:auto; max-width:min(92%,720px); text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
    #revealText > span { display:block; line-height:1.8; }
@@ -161,13 +163,13 @@
   @keyframes towerRise { 0% { transform:translateY(145px) scale(.2); opacity:0; } 62% { transform:translateY(-10px) scale(1.15); opacity:1; } 82% { transform:translateY(4px) scale(.98); } 100% { transform:translateY(0) scale(1); opacity:1; } }
   @keyframes revealMeta { from { transform:translateY(12px); opacity:0; } to { transform:translateY(0); opacity:1; } }
   @keyframes charge {
-    0% { transform:scale(.72) rotate(0deg); opacity:.25; }
-    18% { transform:scale(1) rotate(0deg); opacity:1; }
-    35% { transform:scale(1.025) rotate(-1deg); }
-    50% { transform:scale(1.04) rotate(1.5deg); }
-    68% { transform:scale(1.07) rotate(-2deg); }
-    84% { transform:scale(1.10) rotate(2deg); }
-    100% { transform:scale(1.12) rotate(-2deg); opacity:1; }
+    0% { transform:rotate(0deg); opacity:.25; }
+    18% { transform:rotate(0deg); opacity:1; }
+    35% { transform:rotate(-1deg); }
+    50% { transform:rotate(1.5deg); }
+    68% { transform:rotate(-2deg); }
+    84% { transform:rotate(2deg); }
+    100% { transform:rotate(-1deg); opacity:1; }
   }
   #revealFlash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:5; }
   #revealFlash.go { animation:flashOut .7s ease-out; }
@@ -354,7 +356,7 @@
       <div id="secretLayer"></div>
       <div id="revealFlash"></div>
       <div id="revealStage"><div id="revealBox" class="charging">?</div></div>
-      <div id="revealText" class="dots">SUMMONING</div>
+      <div id="revealText" class="dots" aria-live="polite"></div>
       <button class="rbtn small hidden" id="btnRevealOk">OK</button>
     </div>
   </div>
@@ -1316,8 +1318,8 @@ function playSummonReveal(t, duplicate, kind = 'grass') {
   box.style.width = '230px';
   box.style.height = '300px';
   box.innerHTML = '<div class="pack-tear-half pack-tear-top"><img src="' + packSrc + '" alt="" onload="fitSummonPack(this)"></div><div class="pack-tear-half pack-tear-bottom"><img src="' + packSrc + '" alt="" onload="fitSummonPack(this)"></div>';
-  txt.className = 'dots';
-  txt.textContent = 'SUMMONING';
+  txt.className = '';
+  txt.textContent = '';
   // Build suspense, then physically tear the selected PNG into two moving pieces.
   revealTimer = setTimeout(() => {
     if (!revealPending) return;
@@ -1740,6 +1742,7 @@ function updateBoomerang(t, dt) {
   const T = t.type, b = t.boom;
   b.spin += 20 * dt;
   const speed = T.bulletSpeed;
+  b.prevX = b.x; b.prevY = b.y;
   const gx = b.out ? b.tx : t.x, gy = b.out ? b.ty : t.y;
   const dx = gx - b.x, dy = gy - b.y, dist = Math.hypot(dx, dy), step = speed * dt;
   if (dist <= step) {
@@ -2035,7 +2038,17 @@ function render() {
       const w = (T.weaponLen || 0) + 8, h = T.twin ? 22 : 28;
       const gunOffsets = T.twin ? [-10, 10] : [0]; // DOLTEN holds two guns
       const wimg = T.rainbow ? (rainbowCanvas(T.weapon) || images[T.weapon]) : images[T.weapon];
-      if (T.weapon && wimg) { for (const o of gunOffsets) ctx.drawImage(wimg, 0, o - h / 2, w, h); }
+      if (T.id === 'baklavada' && wimg) {
+        // Large, readable sword held out in front; preserve the PNG aspect ratio.
+        const iw = wimg.naturalWidth || wimg.width || 1, ih = wimg.naturalHeight || wimg.height || 1;
+        const longSide = s * 1.42, ratio = iw / ih;
+        const dw = ratio >= 1 ? longSide : longSide * ratio;
+        const dh = ratio >= 1 ? longSide / ratio : longSide;
+        ctx.rotate(-0.18 - t.punch * 0.18);
+        ctx.shadowColor = 'rgba(70,235,255,.95)'; ctx.shadowBlur = 13;
+        ctx.drawImage(wimg, s * 0.12, -dh * 0.5, dw, dh);
+        ctx.shadowBlur = 0;
+      } else if (T.weapon && wimg) { for (const o of gunOffsets) ctx.drawImage(wimg, 0, o - h / 2, w, h); }
       else if (!T.support && !T.farm) { ctx.fillStyle = '#ccc'; for (const o of gunOffsets) ctx.fillRect(0, o - 4, w, 8); }
       ctx.restore();
     }
@@ -2046,14 +2059,41 @@ function render() {
     if (!t.boom) continue;
     const T = t.type, b = t.boom;
     const im = rainbowCanvas(T.weapon) || images[T.weapon];
-    const sz = (T.weaponLen || 40) + 22;
+    const sz = Math.max(86, (T.weaponLen || 40) * 1.72);
     ctx.save();
     if ((t.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
+    // Curved rainbow wind streak follows the sword's recent movement.
+    if (Number.isFinite(b.prevX) && Number.isFinite(b.prevY)) {
+      const vx = b.x - b.prevX, vy = b.y - b.prevY;
+      const vl = Math.hypot(vx, vy) || 1, nx = -vy / vl, ny = vx / vl;
+      const tailX = b.x - vx * 5.5, tailY = b.y - vy * 5.5;
+      const grad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
+      grad.addColorStop(0, 'rgba(255,70,220,0)');
+      grad.addColorStop(.35, 'rgba(80,245,255,.45)');
+      grad.addColorStop(.72, 'rgba(255,255,120,.85)');
+      grad.addColorStop(1, 'rgba(255,255,255,.95)');
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = grad;
+      ctx.lineCap = 'round'; ctx.lineWidth = 8; ctx.shadowColor = '#62f6ff'; ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.moveTo(tailX + nx * 8, tailY + ny * 8);
+      ctx.quadraticCurveTo((tailX + b.x) / 2 + nx * 18, (tailY + b.y) / 2 + ny * 18, b.x, b.y); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2.5; ctx.shadowBlur = 5;
+      ctx.beginPath(); ctx.moveTo(tailX - nx * 7, tailY - ny * 7);
+      ctx.quadraticCurveTo((tailX + b.x) / 2 - nx * 12, (tailY + b.y) / 2 - ny * 12, b.x, b.y); ctx.stroke();
+      ctx.restore();
+    }
+    if ((t.disabledTimer || 0) > 0) ctx.filter = 'grayscale(1) brightness(.72)';
     ctx.translate(b.x, b.y);
-    ctx.rotate(b.spin);
+    const vx = b.x - (b.prevX ?? b.x), vy = b.y - (b.prevY ?? b.y);
+    const flightAngle = Math.hypot(vx, vy) > 0.01 ? Math.atan2(vy, vx) : b.spin;
+    ctx.rotate(flightAngle + Math.sin(time * 18) * 0.16);
     if (im) {
       const iw = im.width || im.naturalWidth || 1, ih = im.height || im.naturalHeight || 1;
-      ctx.drawImage(im, -sz / 2, -sz / 2 * (ih / iw), sz, sz * (ih / iw));
+      const ratio = iw / ih;
+      const dw = ratio >= 1 ? sz : sz * ratio;
+      const dh = ratio >= 1 ? sz / ratio : sz;
+      ctx.shadowColor = '#69f7ff'; ctx.shadowBlur = 18;
+      ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
+      ctx.shadowBlur = 0;
     } else { ctx.fillStyle = '#fff'; ctx.fillRect(-sz / 2, -3, sz, 6); }
     ctx.restore();
   }
