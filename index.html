@@ -2146,9 +2146,9 @@ const INTRO_LINES = [
   { t: 18, text: 'I DONT KNOW WHY BUT ITS BECAUSE OF YOU' },
   { t: 28, text: 'YOU.', final: true },
   { t: 29, text: 'ITS YOU.', final: true },
-  { t: 30, text: 'ITS FUCKING YOU', final: true },
-  { t: 31, text: "YOU'LL DIE", final: true },
-  { t: 32, text: '' }                       // 2 seconds of pure black / glow before the drop
+  { t: 30.5, text: 'ITS FUCKING YOU', final: true },
+  { t: 31.5, text: "YOU'LL DIE", final: true },
+  { t: 32.5, text: '' }                    // short black / glow pause before the drop
 ];
 const INTRO_HYPE_AT = 22, INTRO_FINAL_AT = 28, INTRO_END_AT = 34;
 let introActive = false, introClockStart = 0, introLineIdx = -2, introPhase = 0, introHideTimer = null;
@@ -2965,4 +2965,3 @@ function fit() {
 addEventListener('resize', fit); fit();
 </script>
 </body>
-</html>
