@@ -27,6 +27,7 @@
   .hbtn { font-family: inherit; font-size: 12px; padding: 10px 12px; background: #3a7; color: #fff; border: 4px solid #000; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; cursor: pointer; margin-left: 6px; }
   .hbtn:disabled { background: #684a34; cursor: not-allowed; }
 
+  /* BOTTOM SHOP: small square buttons, price only */
   #shop { position: absolute; top: 640px; left: 0; width: 960px; height: 80px; background: #3b281d;
     border-top: 4px solid #704b31; box-shadow: inset 0 3px 0 rgba(255,220,170,.06); display: flex; align-items: center; justify-content: center; gap: 12px; }
   .tbtn { position: relative; width: 66px; height: 66px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
@@ -2567,6 +2568,33 @@ function drawImg(name, x, y, w, h, fallback) {
 }
 function setHue(h) { ctx.filter = h ? 'hue-rotate(' + h + 'deg)' : 'none'; }
 
+
+/* Rainbow water: whatever colour the rainwater PNGs have, every tile is recoloured with a flowing rainbow.
+   The 'color' blend keeps the PNG's own shading/animation and swaps only its colours; hues continue across
+   neighbouring tiles so a lake looks like one big rainbow wave. */
+const waterCanvas = document.createElement('canvas');
+waterCanvas.width = TILE; waterCanvas.height = TILE;
+const waterCtx = waterCanvas.getContext('2d');
+function drawRainbowWater(key, cx, cy) {
+  const im = images[key];
+  const x = cx * TILE, y = cy * TILE;
+  const hue = time * 90 + (cx + cy) * 45;
+  if (!im) { ctx.fillStyle = 'hsl(' + Math.round(hue % 360) + ',90%,60%)'; ctx.fillRect(x, y, TILE, TILE); return; }
+  const o = waterCtx;
+  o.globalCompositeOperation = 'source-over';
+  o.clearRect(0, 0, TILE, TILE);
+  o.drawImage(im, 0, 0, TILE, TILE);
+  const g = o.createLinearGradient(0, 0, TILE, TILE);
+  for (let i = 0; i <= 4; i++) g.addColorStop(i / 4, 'hsl(' + Math.round((hue + i * 11) % 360) + ',100%,55%)');
+  o.globalCompositeOperation = 'color';
+  o.fillStyle = g;
+  o.fillRect(0, 0, TILE, TILE);
+  o.globalCompositeOperation = 'destination-in'; // keep the PNG's original transparency
+  o.drawImage(im, 0, 0, TILE, TILE);
+  o.globalCompositeOperation = 'source-over';
+  ctx.drawImage(waterCanvas, x, y);
+}
+
 function render() {
   ctx.clearRect(0, 0, cv.width, cv.height);
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
@@ -2582,7 +2610,7 @@ function render() {
       const frames = ['rainwater', 'rainwater2', 'rainwater3'];
       let key = frames[Math.floor(time * 4 + (cx + cy) * 0.5) % frames.length];
       if (!images[key]) key = frames.find(f => images[f]) || key;
-      drawImg(key, cx * TILE, cy * TILE, TILE, TILE, 'hsl(' + Math.round((time * 120 + cx * 25 + cy * 25) % 360) + ',90%,60%)');
+      drawRainbowWater(key, cx, cy);
     } else if (kind === 'spike') {
       drawImg('spike', cx * TILE, cy * TILE, TILE, TILE, '#9aa0b8');
     } else {
