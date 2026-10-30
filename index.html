@@ -532,14 +532,14 @@
     100% { transform:translate(0,0); }
   }
   #introText { display:block; font-size:34px; line-height:1.9; overflow-wrap:break-word;
-    background:linear-gradient(90deg,#ff2d55,#ff9500,#ffee00,#33ff66,#19e6ff,#5b6bff,#d44bff,#ff2d55); background-size:300% 100%;
+    background:linear-gradient(90deg,#ff2d55,#ff6a2d,#ff9500,#ffd000,#ffee00,#9dff3a,#33ff66,#19ffb0,#19e6ff,#3a9bff,#5b6bff,#9a5bff,#d44bff,#ff4bb0,#ff2d55); background-size:400% 100%;
     -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;
     filter:drop-shadow(0 0 12px rgba(255,255,255,.35));
-    animation:introRb 1.8s linear infinite, introPop .28s ease-out; }
-  #futureIntro.hype #introText { animation:introRb .9s linear infinite, introPop .28s ease-out; }
-  #futureIntro.final #introText { font-size:54px; animation:introRb .45s linear infinite, introPop .2s ease-out; }
-  @keyframes introRb { from { background-position:0 0; } to { background-position:-300% 0; } }
-  @keyframes introPop { from { transform:scale(1.45); opacity:0; } to { transform:scale(1); opacity:1; } }
+    animation:introRb 3.2s linear infinite, introIn .8s cubic-bezier(.22,.8,.3,1) both; }
+  #futureIntro.hype #introText { animation:introRb 2s linear infinite, introIn .55s cubic-bezier(.22,.8,.3,1) both; }
+  #futureIntro.final #introText { font-size:54px; animation:introRb 1.2s linear infinite, introIn .3s cubic-bezier(.22,.8,.3,1) both; }
+  @keyframes introRb { from { background-position:0 0; } to { background-position:-400% 0; } }
+  @keyframes introIn { from { transform:scale(1.12) translateY(10px); opacity:0; } to { transform:scale(1) translateY(0); opacity:1; } }
   #introFlash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:4; }
   #introFlash.go { animation:flashOut .7s ease-out; }
   #introSkip { position:absolute; right:16px; bottom:14px; z-index:6; font-family:inherit; font-size:10px; padding:8px 10px; background:rgba(255,255,255,.08); color:#fff; border:2px solid rgba(255,255,255,.4); cursor:pointer; opacity:.55; }
@@ -742,9 +742,6 @@ const IMG = {
   // FUTURE map textures (if a file is not found, the loader also tries the name with a capital first letter)
   future:      'images/textures/future.png',      // normal ground
   futurepath:  'images/textures/futurepath.png',  // path
-  rainwater:   'images/textures/rainwater.png',   // animated rainbow water (3 frames)
-  rainwater2:  'images/textures/rainwater2.png',
-  rainwater3:  'images/textures/rainwater3.png',
   spike:       'images/textures/spike.png',       // blocks tiles like the desert cactus
   // FUTURE map enemies
   dobleron:    'images/enemies/dobleron.png',
@@ -1037,7 +1034,6 @@ const loadingAssets = [
   'images/towers/baklavada.png', 'images/weapons/rainsword.png',
   'images/textures/grasslandcard.png', 'images/textures/desertcard.png',
   'images/textures/future.png', 'images/textures/futurepath.png', 'images/textures/spike.png',
-  'images/textures/rainwater.png', 'images/textures/rainwater2.png', 'images/textures/rainwater3.png',
   'images/enemies/dobleron.png', 'images/enemies/robot1.png', 'images/enemies/robot2.png', 'images/enemies/robot3.png',
   'images/enemies/angryrobot.png', 'images/enemies/angryrobot2.png', 'images/enemies/angryrobot3.png',
   'images/enemies/bigrobot.png', 'images/enemies/dinobot.png', 'images/enemies/dinobot2.png'
@@ -1241,16 +1237,16 @@ function buildEnemyIndex() {
 }
 
 let pathTiles = new Set(), pathPts = [];
-let blockedTiles = new Set(); // tiles towers cannot be placed on (cactus / spike / rainbow water)
-let blockedKind = {};         // 'x,y' -> 'cactus' | 'spike' | 'water'
+let blockedTiles = new Set(); // tiles towers cannot be placed on (cactus / spike)
+let blockedKind = {};         // 'x,y' -> 'cactus' | 'spike'
 let selectedMap = 'grass';
 const MAPS = {
   // hpMul / speedMul / rewardMul / mobMul: desert is clearly harder than grassland, FUTURE is the hardest.
   // hpRamp = number of waves it takes for the map's HP bonus to fully kick in (default 10).
-  // gemMul = extra gems from cleared waves. cacti / spikes = single blocked tiles, pools = rainbow-water lakes.
+  // gemMul = extra gems from cleared waves. cacti / spikes = single blocked tiles.
   grass:  { label: 'GRASSLAND', ground: 'grass', path: 'dirt',     groundFb: '#3d8b37', pathFb: '#8a5a2b', cacti: 0, hpMul: 1,    speedMul: 1,    rewardMul: 1,   mobMul: 1 },
   desert: { label: 'DESERT',    ground: 'sand',  path: 'sandpath', groundFb: '#d9b36a', pathFb: '#b88a4a', cacti: 4, hpMul: 1.4, speedMul: 1.08, rewardMul: 0.9, mobMul: 1.1 },
-  future: { label: 'FUTURE',    ground: 'future', path: 'futurepath', groundFb: '#1d1840', pathFb: '#3b3a66', cacti: 0, spikes: 6, pools: 3,
+  future: { label: 'FUTURE',    ground: 'future', path: 'futurepath', groundFb: '#1d1840', pathFb: '#3b3a66', cacti: 0, spikes: 6,
             hpMul: 2.4, speedMul: 1.1, rewardMul: 0.85, mobMul: 1.3, hpRamp: 5, gemMul: 1.5 }
 };
 let floatTexts = [];
@@ -1850,30 +1846,13 @@ $('summonGrass').onclick = () => summonTower('grass');
 $('summonDesert').onclick = () => summonTower('desert');
 
 /* ================== GAME ================== */
-// Blocked tiles: desert = cactus, FUTURE = spikes + animated rainbow-water lakes. Towers cannot be built on any of them.
+// Blocked tiles: desert = cactus, FUTURE = spikes. Towers cannot be built on any of them.
 function genCacti() {
   blockedTiles = new Set();
   blockedKind = {};
   const M = MAPS[selectedMap] || MAPS.grass;
   const isFree = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && !pathTiles.has(x + ',' + y) && !blockedTiles.has(x + ',' + y);
   const block = (x, y, kind) => { const k = x + ',' + y; blockedTiles.add(k); blockedKind[k] = kind; };
-
-  // Rainbow-water lakes (FUTURE): each one is a small connected blob of 2-4 tiles.
-  for (let p = 0; p < (M.pools || 0); p++) {
-    let sx = 0, sy = 0, g = 0;
-    do { sx = Math.floor(Math.random() * COLS); sy = Math.floor(Math.random() * ROWS); } while (!isFree(sx, sy) && g++ < 300);
-    if (!isFree(sx, sy)) continue;
-    const cells = [[sx, sy]];
-    block(sx, sy, 'water');
-    const size = 2 + Math.floor(Math.random() * 3);
-    let tries = 0;
-    while (cells.length < size && tries++ < 60) {
-      const [bx, by] = cells[Math.floor(Math.random() * cells.length)];
-      const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(Math.random() * 4)];
-      const nx = bx + d[0], ny = by + d[1];
-      if (isFree(nx, ny)) { block(nx, ny, 'water'); cells.push([nx, ny]); }
-    }
-  }
 
   // Single blockers: cactus (desert) or spike (future).
   const count = M.cacti || M.spikes || 0, kind = M.spikes ? 'spike' : 'cactus';
@@ -2134,7 +2113,7 @@ cv.addEventListener('click', e => {
   const type = typeOf(selected);
   if (pathTiles.has(tx + ',' + ty)) return flash("Can't build on the path!");
   if (blockedTiles.has(tx + ',' + ty)) {
-    const what = { water: 'the rainbow water', spike: 'a spike', cactus: 'a cactus' }[blockedKind[tx + ',' + ty]] || 'that tile';
+    const what = { spike: 'a spike', cactus: 'a cactus' }[blockedKind[tx + ',' + ty]] || 'that tile';
     return flash("Can't build on " + what + "!");
   }
   if (existing) return flash('There is already a tower here!');
@@ -2213,7 +2192,7 @@ function updateIntro() {
     const box = $('introText');
     box.textContent = idx >= 0 ? INTRO_LINES[idx].text : '';
     box.style.animation = 'none'; void box.offsetWidth; box.style.animation = ''; // restart the pop-in
-    if (idx >= 0 && INTRO_LINES[idx].final) { introFlash(0.35); bump(); }
+    if (idx >= 0 && INTRO_LINES[idx].final) { introFlash(0.5); bump(); }
   }
 }
 function endIntro() {
@@ -2569,32 +2548,6 @@ function drawImg(name, x, y, w, h, fallback) {
 function setHue(h) { ctx.filter = h ? 'hue-rotate(' + h + 'deg)' : 'none'; }
 
 
-/* Rainbow water: whatever colour the rainwater PNGs have, every tile is recoloured with a flowing rainbow.
-   The 'color' blend keeps the PNG's own shading/animation and swaps only its colours; hues continue across
-   neighbouring tiles so a lake looks like one big rainbow wave. */
-const waterCanvas = document.createElement('canvas');
-waterCanvas.width = TILE; waterCanvas.height = TILE;
-const waterCtx = waterCanvas.getContext('2d');
-function drawRainbowWater(key, cx, cy) {
-  const im = images[key];
-  const x = cx * TILE, y = cy * TILE;
-  const hue = time * 90 + (cx + cy) * 45;
-  if (!im) { ctx.fillStyle = 'hsl(' + Math.round(hue % 360) + ',90%,60%)'; ctx.fillRect(x, y, TILE, TILE); return; }
-  const o = waterCtx;
-  o.globalCompositeOperation = 'source-over';
-  o.clearRect(0, 0, TILE, TILE);
-  o.drawImage(im, 0, 0, TILE, TILE);
-  const g = o.createLinearGradient(0, 0, TILE, TILE);
-  for (let i = 0; i <= 4; i++) g.addColorStop(i / 4, 'hsl(' + Math.round((hue + i * 11) % 360) + ',100%,55%)');
-  o.globalCompositeOperation = 'color';
-  o.fillStyle = g;
-  o.fillRect(0, 0, TILE, TILE);
-  o.globalCompositeOperation = 'destination-in'; // keep the PNG's original transparency
-  o.drawImage(im, 0, 0, TILE, TILE);
-  o.globalCompositeOperation = 'source-over';
-  ctx.drawImage(waterCanvas, x, y);
-}
-
 function render() {
   ctx.clearRect(0, 0, cv.width, cv.height);
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
@@ -2605,13 +2558,7 @@ function render() {
   for (const k of blockedTiles) {
     const [cx, cy] = k.split(',').map(Number);
     const kind = blockedKind[k] || 'cactus';
-    if (kind === 'water') {
-      // Animated rainbow water: rainwater -> rainwater2 -> rainwater3 (a slight per-tile offset keeps lakes from looking uniform).
-      const frames = ['rainwater', 'rainwater2', 'rainwater3'];
-      let key = frames[Math.floor(time * 4 + (cx + cy) * 0.5) % frames.length];
-      if (!images[key]) key = frames.find(f => images[f]) || key;
-      drawRainbowWater(key, cx, cy);
-    } else if (kind === 'spike') {
+    if (kind === 'spike') {
       drawImg('spike', cx * TILE, cy * TILE, TILE, TILE, '#9aa0b8');
     } else {
       drawImg('cactus', cx * TILE, cy * TILE, TILE, TILE, '#2e7d32');
