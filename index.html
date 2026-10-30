@@ -511,6 +511,40 @@
     #summonReveal .reveal-tower-sprite > .ico { width: 112px !important; height: 112px !important; flex-basis: 112px !important; }
   }
 
+  /* ================== FUTURE MAP INTRO ==================
+     Black screen + rainbow lyrics synced to future.mp3. Each new line replaces the previous one instantly. */
+  #futureIntro { position:absolute; inset:0; z-index:500; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden; --amp:0px; }
+  #futureIntro.ending { background:transparent; pointer-events:none; }
+  #futureIntro.ending #introBox, #futureIntro.ending #introGlow, #futureIntro.ending #introSkip { display:none; }
+  #introGlow { position:absolute; inset:0; opacity:0; pointer-events:none; background:radial-gradient(circle at 50% 50%, rgba(140,70,255,.42), rgba(0,0,0,0) 68%); }
+  #futureIntro.hype #introGlow { opacity:.75; animation:glowPulse .55s ease-in-out infinite alternate, rbHue 3s linear infinite; }
+  #futureIntro.final #introGlow { opacity:1; animation:glowPulse .22s ease-in-out infinite alternate, rbHue 1.1s linear infinite; }
+  @keyframes glowPulse { from { transform:scale(.82); } to { transform:scale(1.18); } }
+  #futureIntro.hype { --amp:3px; }
+  #futureIntro.final { --amp:9px; }
+  #introBox { position:relative; z-index:2; max-width:880px; padding:0 30px; text-align:center; }
+  #futureIntro.hype #introBox, #futureIntro.final #introBox { animation:introShake .09s linear infinite; }
+  @keyframes introShake {
+    0% { transform:translate(0,0); }
+    25% { transform:translate(calc(var(--amp) * -1), calc(var(--amp) * .6)); }
+    50% { transform:translate(var(--amp), calc(var(--amp) * -.7)); }
+    75% { transform:translate(calc(var(--amp) * -.6), calc(var(--amp) * -.5)); }
+    100% { transform:translate(0,0); }
+  }
+  #introText { display:block; font-size:34px; line-height:1.9; overflow-wrap:break-word;
+    background:linear-gradient(90deg,#ff2d55,#ff9500,#ffee00,#33ff66,#19e6ff,#5b6bff,#d44bff,#ff2d55); background-size:300% 100%;
+    -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 12px rgba(255,255,255,.35));
+    animation:introRb 1.8s linear infinite, introPop .28s ease-out; }
+  #futureIntro.hype #introText { animation:introRb .9s linear infinite, introPop .28s ease-out; }
+  #futureIntro.final #introText { font-size:54px; animation:introRb .45s linear infinite, introPop .2s ease-out; }
+  @keyframes introRb { from { background-position:0 0; } to { background-position:-300% 0; } }
+  @keyframes introPop { from { transform:scale(1.45); opacity:0; } to { transform:scale(1); opacity:1; } }
+  #introFlash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:4; }
+  #introFlash.go { animation:flashOut .7s ease-out; }
+  #introSkip { position:absolute; right:16px; bottom:14px; z-index:6; font-family:inherit; font-size:10px; padding:8px 10px; background:rgba(255,255,255,.08); color:#fff; border:2px solid rgba(255,255,255,.4); cursor:pointer; opacity:.55; }
+  #introSkip:hover { opacity:1; }
+
 </style>
 </head>
 <body>
@@ -553,6 +587,14 @@
     <button class="hbtn" id="btnClose" style="background:#c33">X</button>
   </div>
 
+  <!-- FUTURE MAP INTRO (black screen + rainbow lyrics) -->
+  <div id="futureIntro" class="hidden">
+    <div id="introGlow"></div>
+    <div id="introBox"><div id="introText"></div></div>
+    <div id="introFlash"></div>
+    <button id="introSkip" type="button">SKIP &#9654;</button>
+  </div>
+
   <!-- MAIN MENU -->
   <div class="screen" id="menu">
     <img class="menu-bg" src="images/textures/mainmenu.png" alt="" onerror="this.style.display='none'">
@@ -571,23 +613,30 @@
     <div class="xp-panel"><div id="menuPlayerLevel">PLAYER LEVEL 1</div><div class="xp-track"><div class="xp-fill" id="menuXpFill"></div></div><div id="menuXpText">0 / 100 XP</div></div>
   </div>
 
-  <!-- ONE MAP, THREE DIFFICULTY OPTIONS -->
+  <!-- THREE MAPS, THREE DIFFICULTY OPTIONS EACH -->
   <div class="screen hidden" id="maps">
     <h2>SELECT MAP</h2>
-    <div class="row" style="gap:20px;flex-wrap:nowrap">
-      <div class="card map-card" style="width:380px;cursor:default;margin:0">
+    <div class="row" style="gap:12px;flex-wrap:nowrap">
+      <div class="card map-card" style="width:290px;cursor:default;margin:0">
         <div class="pic" id="grassPic" style="height:100px"></div>
-        <div style="font-size:16px;color:#fff3d6;margin:6px 0 10px">GRASSLAND</div>
-        <button class="rbtn small" id="difficultyEasy" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
-        <button class="rbtn small" id="difficultyMedium" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
-        <button class="rbtn small" id="difficultyHard" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
+        <div style="font-size:15px;color:#fff3d6;margin:6px 0 10px">GRASSLAND</div>
+        <button class="rbtn small" id="difficultyEasy" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
+        <button class="rbtn small" id="difficultyMedium" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
+        <button class="rbtn small" id="difficultyHard" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
       </div>
-      <div class="card map-card" style="width:380px;cursor:default;margin:0">
+      <div class="card map-card" style="width:290px;cursor:default;margin:0">
         <div class="pic" id="desertPic" style="height:100px"></div>
-        <div style="font-size:16px;color:#fff3d6;margin:6px 0 10px">DESERT</div>
-        <button class="rbtn small" id="desertEasy" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
-        <button class="rbtn small" id="desertMedium" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
-        <button class="rbtn small" id="desertHard" style="font-size:12px;min-width:0;width:92%;margin:5px 0;border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
+        <div style="font-size:15px;color:#fff3d6;margin:6px 0 10px">DESERT</div>
+        <button class="rbtn small" id="desertEasy" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
+        <button class="rbtn small" id="desertMedium" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
+        <button class="rbtn small" id="desertHard" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
+      </div>
+      <div class="card map-card" style="width:290px;cursor:default;margin:0">
+        <div class="pic" id="futurePic" style="height:100px;background-color:#1d1840"></div>
+        <div style="font-size:15px;color:#fff3d6;margin:6px 0 10px">FUTURE</div>
+        <button class="rbtn small" id="futureEasy" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#174d18;background:#398b36">EASY · 10 WAVES</button>
+        <button class="rbtn small" id="futureMedium" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#684500;background:#ad7a20">MEDIUM · 20 WAVES</button>
+        <button class="rbtn small" id="futureHard" style="font-size:10px;min-width:0;width:94%;margin:5px 0;padding:12px 6px;border-color:#6b1717;background:#a93232">HARD · 40 WAVES</button>
       </div>
     </div>
     <button class="rbtn small" id="btnMapBack">BACK</button>
@@ -689,7 +738,25 @@ const IMG = {
   // MAX farm tower (3 stages)
   max:        'images/towers/max.png',
   max2:       'images/towers/max2.png',
-  max3:       'images/towers/max3.png'
+  max3:       'images/towers/max3.png',
+  // FUTURE map textures (if a file is not found, the loader also tries the name with a capital first letter)
+  future:      'images/textures/future.png',      // normal ground
+  futurepath:  'images/textures/futurepath.png',  // path
+  rainwater:   'images/textures/rainwater.png',   // animated rainbow water (3 frames)
+  rainwater2:  'images/textures/rainwater2.png',
+  rainwater3:  'images/textures/rainwater3.png',
+  spike:       'images/textures/spike.png',       // blocks tiles like the desert cactus
+  // FUTURE map enemies
+  dobleron:    'images/enemies/dobleron.png',
+  robot1:      'images/enemies/robot1.png',
+  robot2:      'images/enemies/robot2.png',
+  robot3:      'images/enemies/robot3.png',
+  angryrobot:  'images/enemies/angryrobot.png',
+  angryrobot2: 'images/enemies/angryrobot2.png',
+  angryrobot3: 'images/enemies/angryrobot3.png',
+  bigrobot:    'images/enemies/bigrobot.png',
+  dinobot:     'images/enemies/dinobot.png',      // FUTURE boss
+  dinobot2:    'images/enemies/dinobot2.png'
 };
 
 // Main-menu music. It is intentionally NOT started on page load: the
@@ -746,21 +813,23 @@ function stopDogodaMusic() {
 }
 dogodaMusic.addEventListener('error', () => console.error('DOGODA track failed to load. Check audios/dogoda.mp3.', dogodaMusic.error));
 
-// Map music: audios/grassland.mp3 and audios/desert.mp3 play during a run.
+// Map music: audios/grassland.mp3, audios/desert.mp3 and audios/future.mp3 play during a run.
 // As soon as a DOGODA is on the field the map music fades out and dogoda.mp3 takes over.
 const MAP_MUSIC_VOLUME = 0.40;   // normal level during a run
+const FUTURE_MUSIC_VOLUME = 0.65; // the Future song is the intro + soundtrack, so it is louder
 const MAP_MUSIC_DUCKED = 0;      // level while a DOGODA is on the field (0 = fully cut; try 0.05 to keep it barely audible)
-const mapMusicTracks = { grass: new Audio('audios/grassland.mp3'), desert: new Audio('audios/desert.mp3') };
+const mapMusicTracks = { grass: new Audio('audios/grassland.mp3'), desert: new Audio('audios/desert.mp3'), future: new Audio('audios/future.mp3') };
 Object.values(mapMusicTracks).forEach(a => {
   a.loop = true; a.preload = 'auto'; a.volume = 0;
   a.addEventListener('error', () => console.error('Map music failed to load. Check the audios folder:', a.src));
 });
 let mapMusicActive = null, mapMusicLevel = 0, dogodaTrackFailed = false;
 dogodaMusic.addEventListener('error', () => { dogodaTrackFailed = true; });
+const mapBaseVolume = () => selectedMap === 'future' ? FUTURE_MUSIC_VOLUME : MAP_MUSIC_VOLUME;
 function startMapMusic() {
   stopMapMusic();
   mapMusicActive = mapMusicTracks[selectedMap] || mapMusicTracks.grass;
-  mapMusicLevel = MAP_MUSIC_VOLUME;
+  mapMusicLevel = mapBaseVolume();
   mapMusicActive.volume = mapMusicLevel;
   try { mapMusicActive.currentTime = 0; } catch (e) {}
   const attempt = mapMusicActive.play();
@@ -777,8 +846,9 @@ function stopMapMusic() {
 function updateMapMusic(dt) {
   if (!mapMusicActive || !running) return;
   const hasDogoda = !dogodaTrackFailed && Array.isArray(towers) && towers.some(t => t.type && t.type.id === 'dogoda');
-  const target = hasDogoda ? MAP_MUSIC_DUCKED : MAP_MUSIC_VOLUME;
-  const step = MAP_MUSIC_VOLUME * dt / 1.2; // ~1.2 second fade
+  const base = mapBaseVolume();
+  const target = hasDogoda ? MAP_MUSIC_DUCKED : base;
+  const step = base * dt / 1.2; // ~1.2 second fade
   mapMusicLevel += Math.max(-step, Math.min(step, target - mapMusicLevel));
   mapMusicActive.volume = Math.max(0, Math.min(1, mapMusicLevel));
   if (mapMusicLevel <= 0.001) {
@@ -965,7 +1035,12 @@ const loadingAssets = [
   'images/enemies/sandboss.png', 'images/enemies/sandboss2.png', 'images/enemies/boss.png',
   'images/towers/max.png', 'images/towers/max2.png', 'images/towers/max3.png',
   'images/towers/baklavada.png', 'images/weapons/rainsword.png',
-  'images/textures/grasslandcard.png', 'images/textures/desertcard.png'
+  'images/textures/grasslandcard.png', 'images/textures/desertcard.png',
+  'images/textures/future.png', 'images/textures/futurepath.png', 'images/textures/spike.png',
+  'images/textures/rainwater.png', 'images/textures/rainwater2.png', 'images/textures/rainwater3.png',
+  'images/enemies/dobleron.png', 'images/enemies/robot1.png', 'images/enemies/robot2.png', 'images/enemies/robot3.png',
+  'images/enemies/angryrobot.png', 'images/enemies/angryrobot2.png', 'images/enemies/angryrobot3.png',
+  'images/enemies/bigrobot.png', 'images/enemies/dinobot.png', 'images/enemies/dinobot2.png'
 ];
 const loadingScreen = document.getElementById('loadingScreen');
 const loadingStatus = document.getElementById('loadingStatus');
@@ -1070,7 +1145,8 @@ const TOWER_TYPES = [
 ];
 
 /* Enemies: dmg = % of base health taken when they reach the base.
-   wMul = extra draw width multiplier (the sprite is size tall and size*wMul wide). */
+   wMul = extra draw width multiplier (the sprite is size tall and size*wMul wide).
+   autoW = true -> the width follows the PNG's real aspect ratio (used by the FUTURE enemies). */
 const ENEMY = {
   greenistan: { hp: 8,  speed: 80,  reward: 6,  size: 48, dmg: 4 },
   redistan:   { hp: 20, speed: 108, reward: 10, size: 52, dmg: 8 },
@@ -1079,7 +1155,13 @@ const ENEMY = {
   sandity:    { hp: 10, speed: 56,  reward: 6,  size: 50, dmg: 5 },
   sandity1:   { hp: 18, speed: 108, reward: 10, size: 52, dmg: 8 },
   // CAMEL: slow, heavily-armoured desert enemy with a two-frame walk animation. Bigger in both width and height.
-  camel:      { hp: 78, speed: 34, reward: 18, size: 82, dmg: 13, wMul: 1.3 }
+  camel:      { hp: 78, speed: 34, reward: 18, size: 82, dmg: 13, wMul: 1.3 },
+  // FUTURE enemies (the map itself also multiplies HP/speed, see MAPS.future).
+  // DOBLERON: gigantic and slow, way out of proportion with the path. BIGROBOT: big armoured robot.
+  // ROBOT: 3-frame walk; below 50% HP it turns ANGRY (angryrobot frames) and runs much faster.
+  dobleron:   { hp: 170, speed: 27, reward: 30, size: 118, dmg: 18, autoW: true },
+  robot:      { hp: 26,  speed: 80, reward: 11, size: 58,  dmg: 9,  autoW: true, img: 'robot1' },
+  bigrobot:   { hp: 95,  speed: 50, reward: 21, size: 94,  dmg: 14, autoW: true }
 };
 
 /* ================== ENEMY INDEX ==================
@@ -1092,7 +1174,11 @@ const ENEMY_INDEX = [
   { id: 'sandity',    name: 'SANDITY',     img: 'sandity',    hp: 10,   speed: 56,  dmg: 5,  map: 'DESERT',    gems: 25 },
   { id: 'sandity1',   name: 'FAST SANDITY',img: 'sandity1',   hp: 18,   speed: 108, dmg: 8,  map: 'DESERT',    gems: 40 },
   { id: 'camel',      name: 'CAMEL',       img: 'camelwalk1', hp: 78,   speed: 34,  dmg: 13, map: 'DESERT',    gems: 75 },
-  { id: 'sandboss',   name: 'DESERT BOSS', img: 'sandboss',   hp: 1100, speed: 31,  dmg: 26, map: 'DESERT',    gems: 200 }
+  { id: 'sandboss',   name: 'DESERT BOSS', img: 'sandboss',   hp: 1100, speed: 31,  dmg: 26, map: 'DESERT',    gems: 200 },
+  { id: 'robot',      name: 'ROBOT',       img: 'robot1',     hp: 26,   speed: 80,  dmg: 9,  map: 'FUTURE',    gems: 60 },
+  { id: 'bigrobot',   name: 'BIG ROBOT',   img: 'bigrobot',   hp: 95,   speed: 50,  dmg: 14, map: 'FUTURE',    gems: 110 },
+  { id: 'dobleron',   name: 'DOBLERON',    img: 'dobleron',   hp: 170,  speed: 27,  dmg: 18, map: 'FUTURE',    gems: 140 },
+  { id: 'dinobot',    name: 'DINOBOT',     img: 'dinobot',    hp: 1500, speed: 26,  dmg: 35, map: 'FUTURE',    gems: 400 }
 ];
 let enemySeen = {}, enemyClaimed = {};
 try {
@@ -1155,12 +1241,17 @@ function buildEnemyIndex() {
 }
 
 let pathTiles = new Set(), pathPts = [];
-let blockedTiles = new Set(); // cactus tiles: towers cannot be placed here
+let blockedTiles = new Set(); // tiles towers cannot be placed on (cactus / spike / rainbow water)
+let blockedKind = {};         // 'x,y' -> 'cactus' | 'spike' | 'water'
 let selectedMap = 'grass';
 const MAPS = {
-  // hpMul / speedMul / rewardMul / mobMul: desert is clearly harder than grassland.
+  // hpMul / speedMul / rewardMul / mobMul: desert is clearly harder than grassland, FUTURE is the hardest.
+  // hpRamp = number of waves it takes for the map's HP bonus to fully kick in (default 10).
+  // gemMul = extra gems from cleared waves. cacti / spikes = single blocked tiles, pools = rainbow-water lakes.
   grass:  { label: 'GRASSLAND', ground: 'grass', path: 'dirt',     groundFb: '#3d8b37', pathFb: '#8a5a2b', cacti: 0, hpMul: 1,    speedMul: 1,    rewardMul: 1,   mobMul: 1 },
-  desert: { label: 'DESERT',    ground: 'sand',  path: 'sandpath', groundFb: '#d9b36a', pathFb: '#b88a4a', cacti: 4, hpMul: 1.4, speedMul: 1.08, rewardMul: 0.9, mobMul: 1.1 }
+  desert: { label: 'DESERT',    ground: 'sand',  path: 'sandpath', groundFb: '#d9b36a', pathFb: '#b88a4a', cacti: 4, hpMul: 1.4, speedMul: 1.08, rewardMul: 0.9, mobMul: 1.1 },
+  future: { label: 'FUTURE',    ground: 'future', path: 'futurepath', groundFb: '#1d1840', pathFb: '#3b3a66', cacti: 0, spikes: 6, pools: 3,
+            hpMul: 2.4, speedMul: 1.1, rewardMul: 0.85, mobMul: 1.3, hpRamp: 5, gemMul: 1.5 }
 };
 let floatTexts = [];
 
@@ -1212,18 +1303,31 @@ function setGemIcons() {
     el.style.backgroundImage = images.gems ? 'url(' + IMG.gems + ')' : 'none';
     el.style.backgroundColor = images.gems ? 'transparent' : '#3cf';
   });
-  [['grassPic', 'grass'], ['desertPic', 'sand']].forEach(([id, key]) => {
+  [['grassPic', 'grass'], ['desertPic', 'sand'], ['futurePic', 'future']].forEach(([id, key]) => {
     const gp = document.getElementById(id);
     if (gp) {
       gp.style.backgroundImage = images[key] ? 'url(' + IMG[key] + ')' : 'none';
       if (key === 'sand') gp.style.backgroundColor = '#d9b36a';
+      if (key === 'future') gp.style.backgroundColor = '#1d1840';
     }
   });
 }
 Object.keys(IMG).forEach(k => {
+  const original = IMG[k];
+  let retried = false;
   const im = new Image();
   im.onload = () => { images[k] = im; refreshShop(); setGemIcons(); buildInventory(); buildTowerShop(); };
-  im.onerror = () => { images[k] = null; console.warn('Image not found:', IMG[k]); };
+  im.onerror = () => {
+    // Linux web servers are case-sensitive: if "dobleron.png" is missing, try "Dobleron.png" once.
+    if (!retried) {
+      retried = true;
+      const alt = original.replace(/\/([^\/]+)$/, (m, f) => '/' + f.charAt(0).toUpperCase() + f.slice(1));
+      if (alt !== original) { IMG[k] = alt; im.src = alt; return; }
+    }
+    IMG[k] = original;
+    images[k] = null;
+    console.warn('Image not found:', original);
+  };
   im.src = IMG[k];
 });
 // DOLTEN must always use its own dolten.png sprite, with no recoloring or
@@ -1746,13 +1850,37 @@ $('summonGrass').onclick = () => summonTower('grass');
 $('summonDesert').onclick = () => summonTower('desert');
 
 /* ================== GAME ================== */
+// Blocked tiles: desert = cactus, FUTURE = spikes + animated rainbow-water lakes. Towers cannot be built on any of them.
 function genCacti() {
   blockedTiles = new Set();
+  blockedKind = {};
   const M = MAPS[selectedMap] || MAPS.grass;
-  let guard = 0;
-  while (blockedTiles.size < M.cacti && guard++ < 1000) {
-    const x = Math.floor(Math.random() * COLS), y = Math.floor(Math.random() * ROWS), k = x + ',' + y;
-    if (!pathTiles.has(k)) blockedTiles.add(k);
+  const isFree = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && !pathTiles.has(x + ',' + y) && !blockedTiles.has(x + ',' + y);
+  const block = (x, y, kind) => { const k = x + ',' + y; blockedTiles.add(k); blockedKind[k] = kind; };
+
+  // Rainbow-water lakes (FUTURE): each one is a small connected blob of 2-4 tiles.
+  for (let p = 0; p < (M.pools || 0); p++) {
+    let sx = 0, sy = 0, g = 0;
+    do { sx = Math.floor(Math.random() * COLS); sy = Math.floor(Math.random() * ROWS); } while (!isFree(sx, sy) && g++ < 300);
+    if (!isFree(sx, sy)) continue;
+    const cells = [[sx, sy]];
+    block(sx, sy, 'water');
+    const size = 2 + Math.floor(Math.random() * 3);
+    let tries = 0;
+    while (cells.length < size && tries++ < 60) {
+      const [bx, by] = cells[Math.floor(Math.random() * cells.length)];
+      const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(Math.random() * 4)];
+      const nx = bx + d[0], ny = by + d[1];
+      if (isFree(nx, ny)) { block(nx, ny, 'water'); cells.push([nx, ny]); }
+    }
+  }
+
+  // Single blockers: cactus (desert) or spike (future).
+  const count = M.cacti || M.spikes || 0, kind = M.spikes ? 'spike' : 'cactus';
+  let placed = 0, guard = 0;
+  while (placed < count && guard++ < 1000) {
+    const x = Math.floor(Math.random() * COLS), y = Math.floor(Math.random() * ROWS);
+    if (isFree(x, y)) { block(x, y, kind); placed++; }
   }
 }
 function reset() {
@@ -1821,7 +1949,7 @@ function currentWaveEnemyCount(waveId = wave) {
 // its queue or enemies: that wave keeps spawning while the next wave counts down.
 function canSkipWave() {
   const batch = currentWaveBatch();
-  if (!running || !batch || wave >= MAX_WAVE || waveCountdownRemaining > 0) return false;
+  if (!running || introActive || !batch || wave >= MAX_WAVE || waveCountdownRemaining > 0) return false;
   const totalMobs = Math.ceil((6 + batch.id * 1.5) * (DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy).mobs * (MAPS[selectedMap] || MAPS.grass).mobMul);
   const remaining = batch.queue.length + currentWaveEnemyCount(batch.id);
   const threshold = Math.max(4, Math.ceil(totalMobs * 0.24));
@@ -1864,7 +1992,8 @@ function payWaveRewards(batch) {
   }
   const reward = 20 + batch.id * 5 + farm;
   const difficultyGemBonus = selectedDifficulty === 'hard' ? 1.5 : selectedDifficulty === 'medium' ? 1.2 : 1;
-  const waveGems = Math.floor((25 + batch.id * 8) * difficultyGemBonus * gemMultiplier());
+  const mapGemBonus = (MAPS[selectedMap] || MAPS.grass).gemMul || 1; // FUTURE pays more gems because it is much harder
+  const waveGems = Math.floor((25 + batch.id * 8) * difficultyGemBonus * mapGemBonus * gemMultiplier());
   money += reward;
   gems += waveGems;
   earnedGems += waveGems;
@@ -1876,6 +2005,16 @@ function payWaveRewards(batch) {
 }
 
 function pickEnemyType(w) {
+  if (selectedMap === 'future') {
+    // Robots fill the early waves. BIGROBOTs join from wave 3, giant slow DOBLERONs from wave 5,
+    // and both get more common the further you get.
+    const dobChance = w >= 5 ? Math.min(0.22, 0.05 + (w - 5) * 0.008) : 0;
+    const bigChance = w >= 3 ? Math.min(0.36, 0.10 + (w - 3) * 0.015) : 0;
+    const r = Math.random();
+    if (r < dobChance) return 'dobleron';
+    if (r < dobChance + bigChance) return 'bigrobot';
+    return 'robot';
+  }
   if (selectedMap === 'desert') {
     // Camels are exclusive to Desertta: rare early, more common in later waves.
     // They move slowly but have high HP and deal heavy damage if they reach the base.
@@ -1912,8 +2051,9 @@ function launchWave() {
   const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
   const n = Math.ceil((6 + wave * 1.5) * difficulty.mobs * (MAPS[selectedMap] || MAPS.grass).mobMul);
   for (let i = 0; i < n; i++) queue.push(pickEnemyType(wave));
-  // The boss appears only in the final wave of the selected difficulty.
-  if (wave === MAX_WAVE) queue.push('boss');
+  // The boss appears in the final wave of the selected difficulty.
+  // FUTURE is brutal: DINOBOT also shows up as a mini-boss every 10th wave (medium / hard).
+  if (wave === MAX_WAVE || (selectedMap === 'future' && wave % 10 === 0)) queue.push('boss');
   waveBatches.push({
     id: wave,
     queue,
@@ -1939,13 +2079,15 @@ function updateWaveCountdown(dt) {
 function spawnEnemy(type, waveId) {
   const difficulty = DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.easy;
   const isBoss = type === 'boss';
-  const desert = selectedMap === 'desert';
+  const desert = selectedMap === 'desert', future = selectedMap === 'future';
   const d = isBoss
-    ? (desert ? { hp: 1100 + waveId * 60, speed: 31, reward: 160 + waveId * 8, size: 130, dmg: 26 }
+    ? (future ? { hp: 1500 + waveId * 70, speed: 26, reward: 220 + waveId * 10, size: 156, dmg: 35, autoW: true }
+      : desert ? { hp: 1100 + waveId * 60, speed: 31, reward: 160 + waveId * 8, size: 130, dmg: 26 }
               : { hp: 750 + waveId * 45, speed: 27, reward: 130 + waveId * 8, size: 124, dmg: 22 })
     : ENEMY[type];
+  const bossKey = future ? 'dinobot' : desert ? 'sandboss' : 'boss';
   // Enemy Index: the first time an enemy appears it becomes discovered.
-  discoverEnemy(isBoss ? (desert ? 'sandboss' : 'boss') : type);
+  discoverEnemy(isBoss ? bossKey : type);
   // Gradual scaling keeps 20- and 40-wave runs challenging without becoming absurd.
   const MP = MAPS[selectedMap] || MAPS.grass;
   const k = waveId - 1;
@@ -1954,16 +2096,20 @@ function spawnEnemy(type, waveId) {
   const waveHpMul = isBoss ? 1 : 1 + 0.10 * kh + 0.014 * kh * kh + 0.0001 * kh * kh * kh;
   const spMul = Math.min(1.6, 1 + k * 0.010);
   const difficultyHp = isBoss ? difficulty.boss : difficulty.hp;
-  // The map's HP bonus ramps in over the first 10 waves, so early desert waves are not a wall.
-  const mapHpMul = 1 + (MP.hpMul - 1) * Math.min(1, k / 10);
+  // The map's HP bonus ramps in over the first waves (10 by default, 5 on FUTURE), so early waves are not a wall.
+  const mapHpMul = 1 + (MP.hpMul - 1) * Math.min(1, k / (MP.hpRamp || 10));
   const hp = d.hp * waveHpMul * difficultyHp * mapHpMul;
   enemies.push({ type, waveId, isBoss, flip: 1, phase: Math.random() * 6.28, x: pathPts[0].x, y: pathPts[0].y, target: 1,
     hp, maxHp: hp, speed: d.speed * spMul * difficulty.speed * MP.speedMul, reward: Math.round(d.reward * MP.rewardMul), size: d.size,
-    wMul: d.wMul || 1,
-    dmg: d.dmg, img: isBoss ? (desert ? 'sandboss' : 'boss') : type, dir: 1,
-    walkImgs: (isBoss && desert) ? ['sandboss', 'sandboss2'] : type === 'camel' ? ['camelwalk1', 'camelwalk2'] : (type === 'sandity1' ? ['sandity1', 'sandity2', 'sandity3'] : null),
-    walkFps: (isBoss && desert) ? 3.5 : type === 'camel' ? 3.2 : 9,
-    attackTimer: isBoss ? 3.2 : 0, attackCooldown: isBoss ? 6.2 : 0 });
+    wMul: d.wMul || 1, autoW: !!d.autoW,
+    enrage: type === 'robot', angry: false,
+    dmg: d.dmg, img: isBoss ? bossKey : (d.img || type), dir: 1,
+    walkImgs: isBoss ? (future ? ['dinobot', 'dinobot2'] : desert ? ['sandboss', 'sandboss2'] : null)
+      : type === 'camel' ? ['camelwalk1', 'camelwalk2']
+      : type === 'sandity1' ? ['sandity1', 'sandity2', 'sandity3']
+      : type === 'robot' ? ['robot1', 'robot2', 'robot3'] : null,
+    walkFps: isBoss ? 3.5 : type === 'camel' ? 3.2 : type === 'robot' ? 8 : 9,
+    attackTimer: isBoss ? 3.2 : 0, attackCooldown: isBoss ? (future ? 5.0 : 6.2) : 0 });
 }
 
 /* ================== INPUT ================== */
@@ -1975,7 +2121,7 @@ cv.addEventListener('mousemove', e => { mouse = toCanvas(e); });
 cv.addEventListener('mouseleave', () => { mouse = { x: -1, y: -1 }; });
 cv.addEventListener('contextmenu', e => { e.preventDefault(); if (selected) selectTower(null); selTower = null; refreshInfo(); });
 cv.addEventListener('click', e => {
-  if (!running) return;
+  if (!running || introActive) return;
   const p = toCanvas(e);
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
   if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return;
@@ -1987,7 +2133,10 @@ cv.addEventListener('click', e => {
   }
   const type = typeOf(selected);
   if (pathTiles.has(tx + ',' + ty)) return flash("Can't build on the path!");
-  if (blockedTiles.has(tx + ',' + ty)) return flash("Can't build on a cactus!");
+  if (blockedTiles.has(tx + ',' + ty)) {
+    const what = { water: 'the rainbow water', spike: 'a spike', cactus: 'a cactus' }[blockedKind[tx + ',' + ty]] || 'that tile';
+    return flash("Can't build on " + what + "!");
+  }
   if (existing) return flash('There is already a tower here!');
   if (money < type.cost) return flash('Not enough gold!');
   money -= type.cost;
@@ -1996,7 +2145,7 @@ cv.addEventListener('click', e => {
   hud();
 });
 addEventListener('keydown', e => {
-  if (!running) return;
+  if (!running || introActive) return;
   if (e.key === 'Escape') { selTower = null; refreshInfo(); return selectTower(null); }
   if (e.key === 'x' || e.key === 'X' || e.key === 'Delete') { sellTower(); return; }
   const list = shopList();
@@ -2004,6 +2153,94 @@ addEventListener('keydown', e => {
   if (i >= 1 && i <= list.length) selectTower(selected === list[i - 1].id ? null : list[i - 1].id);
   if (e.key === ' ') { e.preventDefault(); skipWave(); }
 });
+
+/* ================== FUTURE INTRO ==================
+   Black screen, rainbow text, future.mp3 keeps playing. Every new line replaces the previous one instantly.
+   Timings are in seconds from the start of the song (they follow the song's own clock when it is playing).
+   ► Edit the "t" values below to match your song exactly.
+   00:22 = HYPE (screen starts shaking + glow)   00:28 = LAST FINAL HYPE (huge text, hard shake, 1 second per line)
+   00:34 = the game starts (white flash) and the song just keeps going in the background. */
+const INTRO_LINES = [
+  { t: 2,  text: 'Welcome' },
+  { t: 6,  text: 'To the Future' },
+  { t: 11, text: 'Our World is now DESTROYED' },
+  { t: 18, text: 'I DONT KNOW WHY BUT ITS BECAUSE OF YOU' },
+  { t: 28, text: 'YOU.', final: true },
+  { t: 29, text: 'ITS YOU.', final: true },
+  { t: 30, text: 'ITS FUCKING YOU', final: true },
+  { t: 31, text: "YOU'LL DIE", final: true },
+  { t: 32, text: '' }                       // 2 seconds of pure black / glow before the drop
+];
+const INTRO_HYPE_AT = 22, INTRO_FINAL_AT = 28, INTRO_END_AT = 34;
+let introActive = false, introClockStart = 0, introLineIdx = -2, introPhase = 0, introHideTimer = null;
+
+function introNow() {
+  const a = mapMusicTracks.future;
+  if (a && !a.paused && a.currentTime > 0.05) return a.currentTime;  // stay in sync with the real song
+  return (performance.now() - introClockStart) / 1000;               // fallback if the mp3 is missing / blocked
+}
+function introFlash(sec) {
+  const f = $('introFlash');
+  f.classList.remove('go'); void f.offsetWidth;
+  f.style.animationDuration = sec + 's';
+  f.classList.add('go');
+}
+function startIntro() {
+  clearTimeout(introHideTimer);
+  introActive = true;
+  introClockStart = performance.now();
+  introLineIdx = -2; introPhase = 0;
+  $('futureIntro').className = '';
+  $('introText').textContent = '';
+  $('introFlash').classList.remove('go');
+}
+function updateIntro() {
+  if (!introActive) return;
+  const t = introNow();
+  if (t >= INTRO_END_AT) { endIntro(); return; }
+  const el = $('futureIntro');
+  const phase = t >= INTRO_FINAL_AT ? 2 : t >= INTRO_HYPE_AT ? 1 : 0;
+  if (phase !== introPhase) {
+    introPhase = phase;
+    el.classList.toggle('hype', phase === 1);
+    el.classList.toggle('final', phase === 2);
+    if (phase) { introFlash(0.5); bump(); }
+  }
+  let idx = -1;
+  for (let i = 0; i < INTRO_LINES.length; i++) if (t >= INTRO_LINES[i].t) idx = i;
+  if (idx !== introLineIdx) {
+    introLineIdx = idx;
+    const box = $('introText');
+    box.textContent = idx >= 0 ? INTRO_LINES[idx].text : '';
+    box.style.animation = 'none'; void box.offsetWidth; box.style.animation = ''; // restart the pop-in
+    if (idx >= 0 && INTRO_LINES[idx].final) { introFlash(0.35); bump(); }
+  }
+}
+function endIntro() {
+  if (!introActive) return;
+  introActive = false;
+  const el = $('futureIntro');
+  el.classList.add('ending');   // the black screen turns transparent while the white flash fades out
+  introFlash(0.9);
+  clearTimeout(introHideTimer);
+  introHideTimer = setTimeout(() => { el.className = 'hidden'; }, 950);
+  if (running) {
+    flash('THE FUTURE HAS BEGUN!', 2600);
+    launchWave(); // the drop = wave 1 starts immediately, no 3-2-1
+  }
+}
+function cancelIntro() {
+  introActive = false;
+  clearTimeout(introHideTimer);
+  $('futureIntro').className = 'hidden';
+}
+function skipIntro() {
+  if (!introActive) return;
+  const a = mapMusicTracks.future;
+  try { if (a && !a.paused) a.currentTime = INTRO_END_AT; } catch (e) {} // song continues from the "start" point
+  endIntro();
+}
+$('introSkip').onclick = skipIntro;
 
 const SCREEN_IDS = ['menu', 'maps', 'inventory', 'shopScreen', 'enemyIndex', 'end'];
 const show = id => { SCREEN_IDS.forEach(s => $(s).classList.toggle('hidden', s !== id)); refreshPlayerXP(); document.querySelectorAll('.gemcount').forEach(el => el.textContent=gems); };
@@ -2077,6 +2314,9 @@ $('difficultyHard').onclick = () => pickMap('grass', 'hard');
 $('desertEasy').onclick = () => pickMap('desert', 'easy');
 $('desertMedium').onclick = () => pickMap('desert', 'medium');
 $('desertHard').onclick = () => pickMap('desert', 'hard');
+$('futureEasy').onclick = () => pickMap('future', 'easy');
+$('futureMedium').onclick = () => pickMap('future', 'medium');
+$('futureHard').onclick = () => pickMap('future', 'hard');
 $('btnAgain').onclick = startGame;
 $('btnToMenu').onclick = toMenu;
 $('btnMenu').onclick = toMenu;
@@ -2084,15 +2324,18 @@ $('btnSkipWave').onclick = skipWave;
 refreshPlayerXP(); save();
 
 function startGame() {
+  cancelIntro();
   stopMenuMusic();
   stopDogodaMusic();
   SCREEN_IDS.forEach(s => $(s).classList.add('hidden'));
   running = true; reset();
   startMapMusic(); // the click that started the run unlocks audio
-  startWave();
+  if (selectedMap === 'future') startIntro(); // black-screen rainbow intro, the wave starts when it ends
+  else startWave();
 }
 function toMenu() {
   running = false;
+  cancelIntro();
   stopDogodaMusic();
   stopMapMusic();
   waveCountdownRemaining = 0;
@@ -2105,6 +2348,7 @@ function toMenu() {
 }
 function endGame(win) {
   running = false;
+  cancelIntro();
   stopDogodaMusic();
   stopMapMusic();
   waveCountdownRemaining = 0;
@@ -2172,6 +2416,13 @@ function update(dt) {
   }
 
   for (const e of enemies) {
+    // FUTURE ROBOT: below half health it turns ANGRY (angryrobot frames) and sprints.
+    if (e.enrage && !e.angry && e.hp <= e.maxHp * 0.5) {
+      e.angry = true;
+      e.speed *= 1.7;
+      e.walkImgs = ['angryrobot', 'angryrobot2', 'angryrobot3'];
+      e.walkFps = 13;
+    }
     const t = pathPts[e.target];
     const dx = t.x - e.x, dy = t.y - e.y, dist = Math.hypot(dx, dy);
     const step = e.speed * dt;
@@ -2194,7 +2445,7 @@ function update(dt) {
     boss.attackTimer -= dt;
     if (boss.attackTimer <= 0) {
       boss.attackTimer = boss.attackCooldown;
-      const radius = selectedDifficulty === 'hard' ? 166 : selectedDifficulty === 'medium' ? 150 : 138;
+      const radius = (selectedDifficulty === 'hard' ? 166 : selectedDifficulty === 'medium' ? 150 : 138) * (selectedMap === 'future' ? 1.25 : 1);
       let disabledCount = 0;
       for (const tower of towers) {
         if (Math.hypot(tower.x - boss.x, tower.y - boss.y) <= radius) {
@@ -2326,7 +2577,18 @@ function render() {
   }
   for (const k of blockedTiles) {
     const [cx, cy] = k.split(',').map(Number);
-    drawImg('cactus', cx * TILE, cy * TILE, TILE, TILE, '#2e7d32');
+    const kind = blockedKind[k] || 'cactus';
+    if (kind === 'water') {
+      // Animated rainbow water: rainwater -> rainwater2 -> rainwater3 (a slight per-tile offset keeps lakes from looking uniform).
+      const frames = ['rainwater', 'rainwater2', 'rainwater3'];
+      let key = frames[Math.floor(time * 4 + (cx + cy) * 0.5) % frames.length];
+      if (!images[key]) key = frames.find(f => images[f]) || key;
+      drawImg(key, cx * TILE, cy * TILE, TILE, TILE, 'hsl(' + Math.round((time * 120 + cx * 25 + cy * 25) % 360) + ',90%,60%)');
+    } else if (kind === 'spike') {
+      drawImg('spike', cx * TILE, cy * TILE, TILE, TILE, '#9aa0b8');
+    } else {
+      drawImg('cactus', cx * TILE, cy * TILE, TILE, TILE, '#2e7d32');
+    }
   }
 
   const mtx = Math.floor(mouse.x / TILE), mty = Math.floor(mouse.y / TILE);
@@ -2547,7 +2809,13 @@ function render() {
 
   let hovered = null, hd = 1e9;
   for (const e of enemies) {
-    const s = e.size, wm = e.wMul || 1;
+    const s = e.size;
+    // wMul = fixed width multiplier; autoW (FUTURE enemies) = width follows the PNG's real aspect ratio.
+    let wm = e.wMul || 1;
+    if (e.autoW) {
+      const ref = images[e.walkImgs ? e.walkImgs[0] : e.img];
+      if (ref && ref.naturalHeight) wm = Math.max(0.5, Math.min(2.4, ref.naturalWidth / ref.naturalHeight));
+    }
     const air = e.isBoss ? 0 : Math.abs(Math.sin(time * 7 + e.phase));
     const hop = e.isBoss ? Math.abs(Math.sin(time * 5.2 + e.phase)) * 2.2 : air * 8;
     const bossJiggle = e.isBoss ? Math.sin(time * 8.5 + e.phase) : 0;
@@ -2556,21 +2824,22 @@ function render() {
       ctx.save();
       ctx.globalAlpha = Math.min(0.8, e.slamFlash);
       ctx.strokeStyle = '#b8c4cc'; ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.arc(e.x, e.y, (1 - e.slamFlash / 0.75) * (selectedDifficulty === 'hard' ? 166 : selectedDifficulty === 'medium' ? 150 : 138), 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(e.x, e.y, (1 - e.slamFlash / 0.75) * (selectedDifficulty === 'hard' ? 166 : selectedDifficulty === 'medium' ? 150 : 138) * (selectedMap === 'future' ? 1.25 : 1), 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
     ctx.save();
     ctx.translate(e.x + (e.isBoss ? Math.sin(time * 10 + e.phase) * 1.8 : 0), e.y + s / 2 - hop);
     if (e.isBoss) ctx.rotate(bossJiggle * 0.045);
     ctx.scale((1 + sq) * e.flip * (e.type === 'camel' ? -1 : 1), 1 - sq);
-    // Walk animation: desert boss = sandboss/sandboss2, fast sandity = sandity1/2/3.
+    // Walk animation: desert boss = sandboss/sandboss2, fast sandity = sandity1/2/3, future boss = dinobot/dinobot2,
+    // robot = robot1/2/3 (angryrobot1/2/3 once enraged).
     let imgKey = e.img;
     if (e.walkImgs) {
       imgKey = e.walkImgs[Math.floor(time * e.walkFps + e.phase) % e.walkImgs.length];
       if (!images[imgKey]) imgKey = e.walkImgs[0];
     }
     // wMul makes wide enemies (CAMEL) wider than they are tall.
-    drawImg(imgKey, -s * wm / 2, -s, s * wm, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : e.type.startsWith('sandity') ? '#e0b050' : e.type === 'camel' ? '#b88a4a' : '#d33');
+    drawImg(imgKey, -s * wm / 2, -s, s * wm, s, e.isBoss ? '#454b55' : e.type === 'greenistan' ? '#2d2' : e.type.startsWith('sandity') ? '#e0b050' : e.type === 'camel' ? '#b88a4a' : (e.type === 'robot' || e.type === 'bigrobot' || e.type === 'dobleron') ? (e.angry ? '#e33' : '#8ab') : '#d33');
     ctx.restore();
     if (mouse.x >= 0) {
       const d = Math.hypot(mouse.x - e.x, mouse.y - e.y);
@@ -2660,7 +2929,8 @@ function loop(ts) {
   const dt = Math.min(Math.max(0, (ts - last) / 1000 || 0), 0.05);
   last = ts;
   time += dt;
-  if (running) update(dt);
+  if (introActive) updateIntro();            // FUTURE intro runs on the song clock; gameplay is frozen meanwhile
+  if (running && !introActive) update(dt);
   render();
   if (!$('menu').classList.contains('hidden')) drawLeaves(dt);
   requestAnimationFrame(loop);
@@ -2684,7 +2954,8 @@ function resumeFromBackground() {
 
   // Small fixed steps keep enemy path movement, tower cooldowns, projectiles,
   // spawn queues, countdowns and base damage consistent with normal gameplay.
-  while (elapsed > 0.000001 && running) {
+  // (Nothing is simulated during the FUTURE intro: the game has not started yet.)
+  while (elapsed > 0.000001 && running && !introActive) {
     const step = Math.min(0.05, elapsed);
     time += step;
     update(step);
