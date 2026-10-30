@@ -614,6 +614,7 @@
       <div class="tr-buttons">
         <button id="trStart" type="button">START TIMER</button>
         <button id="trMark" type="button" disabled>MARK THIS TEXT</button>
+        <button id="trDelete" type="button" disabled>DELETE LAST</button>
         <button id="trReset" type="button">RESET</button>
       </div>
       <textarea id="trOutput" readonly placeholder="Tıkladığın saniyeler burada görünecek..."></textarea>
@@ -1635,7 +1636,11 @@ $('btnTargetMode').onclick = () => {
 const SELL_REFUND = 0.6; // you get 60% of everything you spent on the tower (build + upgrades)
 function sellValue(t) { return Math.floor(((t && t.invested) || 0) * SELL_REFUND); }
 function sellTower() {
-  if (!running || !selTower) return;
+  if (!running) return;
+  if (!selTower) {
+    flash('SELECT A TOWER FIRST!');
+    return;
+  }
   const t = selTower, value = sellValue(t);
   towers = towers.filter(x => x !== t);
   money += value;
@@ -1644,6 +1649,7 @@ function sellTower() {
   // Selling the last DOGODA stops its song; the map music fades back in by itself.
   if (t.type.id === 'dogoda' && !towers.some(x => x.type.id === 'dogoda')) stopDogodaMusic();
   flash('SOLD ' + t.type.name + ' +' + value + ' GOLD');
+  refreshInfo();
   hud();
 }
 $('btnSell').onclick = sellTower;
@@ -2165,15 +2171,14 @@ addEventListener('keydown', e => {
    00:22 = HYPE (screen starts shaking + glow)   00:28 = LAST FINAL HYPE (huge text, hard shake, 1 second per line)
    00:34 = the game starts (white flash) and the song just keeps going in the background. */
 const INTRO_LINES = [
-  { t: 2,  text: 'Welcome' },
-  { t: 6,  text: 'To the Future' },
-  { t: 11, text: 'Our World is now DESTROYED' },
-  { t: 18, text: 'I DONT KNOW WHY BUT ITS BECAUSE OF YOU' },
-  { t: 28, text: 'YOU.', final: true },
-  { t: 29, text: 'ITS YOU.', final: true },
-  { t: 30.5, text: 'ITS FUCKING YOU', final: true },
-  { t: 31.5, text: "YOU'LL DIE", final: true },
-  { t: 32.5, text: '' }                    // short black / glow pause before the drop
+  { t: 2.14, text: 'Welcome' },
+  { t: 5.09, text: 'To the Future' },
+  { t: 10.64, text: 'Our World is now DESTROYED' },
+  { t: 16.45, text: 'I DONT KNOW WHY BUT ITS BECAUSE OF YOU' },
+  { t: 27.72, text: 'YOU.', final: true },
+  { t: 29.23, text: 'ITS YOU.', final: true },
+  { t: 30.69, text: 'ITS FUCKING YOU', final: true },
+  { t: 32.01, text: "YOU'LL DIE", final: true }
 ];
 const INTRO_HYPE_AT = 22, INTRO_FINAL_AT = 28, INTRO_END_AT = 34;
 let introActive = false, introClockStart = 0, introLineIdx = -2, introPhase = 0, introHideTimer = null;
@@ -2285,7 +2290,9 @@ function timingRecorderRefresh() {
   }
   $('trOutput').value = timingRecorderMarks.map((m, i) =>
     (i + 1) + '. ' + m.text + ' = ' + m.t.toFixed(2) + 's'
-  ).join('\\n');
+  ).join('\n');
+  const del = $('trDelete');
+  if (del) del.disabled = timingRecorderMarks.length === 0;
 }
 $('trStart').onclick = () => {
   timingRecorderStartedAt = performance.now();
@@ -2302,6 +2309,12 @@ $('trMark').onclick = () => {
   const seconds = (performance.now() - timingRecorderStartedAt) / 1000;
   timingRecorderMarks.push({ text: TIMING_LABELS[timingRecorderIndex], t: seconds });
   timingRecorderIndex++;
+  timingRecorderRefresh();
+};
+$('trDelete').onclick = () => {
+  if (!timingRecorderMarks.length) return;
+  timingRecorderMarks.pop();
+  timingRecorderIndex = Math.max(0, timingRecorderIndex - 1);
   timingRecorderRefresh();
 };
 $('trReset').onclick = () => {
